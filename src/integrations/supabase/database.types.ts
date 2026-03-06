@@ -17,43 +17,43 @@ export type Database = {
     Tables: {
       company_profiles: {
         Row: {
-          id: string
-          user_id: string | null
-          company_name: string
-          industry: string
-          website_url: string
           about_company: string | null
           address: string | null
-          phone: string | null
-          email: string | null
+          company_name: string
           created_at: string | null
+          email: string | null
+          id: string
+          industry: string
+          phone: string | null
           updated_at: string | null
+          user_id: string | null
+          website_url: string
         }
         Insert: {
-          id?: string
-          user_id?: string | null
-          company_name: string
-          industry: string
-          website_url: string
           about_company?: string | null
           address?: string | null
-          phone?: string | null
-          email?: string | null
+          company_name: string
           created_at?: string | null
+          email?: string | null
+          id?: string
+          industry: string
+          phone?: string | null
           updated_at?: string | null
+          user_id?: string | null
+          website_url: string
         }
         Update: {
-          id?: string
-          user_id?: string | null
-          company_name?: string
-          industry?: string
-          website_url?: string
           about_company?: string | null
           address?: string | null
-          phone?: string | null
-          email?: string | null
+          company_name?: string
           created_at?: string | null
+          email?: string | null
+          id?: string
+          industry?: string
+          phone?: string | null
           updated_at?: string | null
+          user_id?: string | null
+          website_url?: string
         }
         Relationships: []
       }
@@ -123,33 +123,6 @@ export type Database = {
           product_name?: string
           stripe_payment_id?: string | null
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string | null
         }
         Relationships: []
       }
