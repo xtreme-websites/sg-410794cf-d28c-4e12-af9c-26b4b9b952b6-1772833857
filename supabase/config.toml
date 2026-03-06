@@ -1,0 +1,17 @@
+project_id = "dfktoeyonjawfxxtacvx"
+
+[functions.media-presence-audit]
+verify_jwt = false
+
+[functions.trending-topics]
+verify_jwt = false
+
+[functions.generate-press-release]
+verify_jwt = false
+
+[functions.refine-press-release]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
