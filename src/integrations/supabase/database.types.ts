@@ -15,6 +15,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_profiles: {
+        Row: {
+          id: string
+          user_id: string | null
+          company_name: string
+          industry: string
+          website_url: string
+          about_company: string | null
+          address: string | null
+          phone: string | null
+          email: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          company_name: string
+          industry: string
+          website_url: string
+          about_company?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          company_name?: string
+          industry?: string
+          website_url?: string
+          about_company?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       competitor_analysis: {
         Row: {
           company_name: string

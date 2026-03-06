@@ -97,18 +97,27 @@ export default function CompanyDataModal({ isOpen, onClose, onSave, currentData 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) {
+        alert('You must be logged in to save company data. Please sign in first.');
+        setIsLoading(false);
+        return;
+      }
+
       const payload = {
         ...formData,
-        user_id: user?.id || null
+        user_id: user.id
       };
 
       let result;
       if (formData.id) {
+        // Update existing profile
         result = await supabase
           .from('company_profiles')
           .update(payload)
-          .eq('id', formData.id);
+          .eq('id', formData.id)
+          .select();
       } else {
+        // Insert new profile
         result = await supabase
           .from('company_profiles')
           .insert([payload])
@@ -120,16 +129,25 @@ export default function CompanyDataModal({ isOpen, onClose, onSave, currentData 
         }
       }
 
-      if (result.error) throw result.error;
+      if (result.error) {
+        console.error('Supabase error:', result.error);
+        throw result.error;
+      }
 
       onSave(formData);
       alert('Company data saved successfully!');
       onClose();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error saving company data:', e);
-      alert('Error saving data. Your changes will be kept locally.');
-      onSave(formData);
-      onClose();
+      
+      // Check if it's a table not found error
+      if (e.message && e.message.includes('relation "public.company_profiles" does not exist')) {
+        alert('Database table not found. The company_profiles table needs to be created in your Supabase database. Please contact support or run the migration manually.');
+      } else if (e.message && e.message.includes('JWT')) {
+        alert('Authentication error. Please sign in again.');
+      } else {
+        alert(`Error saving data: ${e.message || 'Unknown error'}. Please try again.`);
+      }
     }
     setIsLoading(false);
   };
