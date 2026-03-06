@@ -137,16 +137,18 @@ export default function CompanyDataModal({ isOpen, onClose, onSave, currentData 
       onSave(formData);
       alert('Company data saved successfully!');
       onClose();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error saving company data:', e);
       
       // Check if it's a table not found error
-      if (e.message && e.message.includes('relation "public.company_profiles" does not exist')) {
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      
+      if (errorMessage.includes('relation "public.company_profiles" does not exist')) {
         alert('Database table not found. The company_profiles table needs to be created in your Supabase database. Please contact support or run the migration manually.');
-      } else if (e.message && e.message.includes('JWT')) {
+      } else if (errorMessage.includes('JWT')) {
         alert('Authentication error. Please sign in again.');
       } else {
-        alert(`Error saving data: ${e.message || 'Unknown error'}. Please try again.`);
+        alert(`Error saving data: ${errorMessage}. Please try again.`);
       }
     }
     setIsLoading(false);
