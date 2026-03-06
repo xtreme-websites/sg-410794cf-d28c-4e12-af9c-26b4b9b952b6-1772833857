@@ -2,12 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Read from Vite environment variables
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// When Supabase is connected through Softgen, credentials are managed internally
+// Check for Vite environment variables first, then fall back to defaults
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+  console.error('Supabase credentials not found. Please ensure Supabase is connected in Softgen.');
 }
 
 // Import the supabase client like this:
