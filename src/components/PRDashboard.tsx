@@ -188,7 +188,15 @@ export default function PRDashboard() {
     }
   };
 
-  const handleCompanyDataSave = (data: any) => {
+  const handleCompanyDataSave = (data: {
+    company_name: string;
+    industry: string;
+    website_url: string;
+    about_company: string;
+    address: string;
+    phone: string;
+    email: string;
+  }) => {
     setCompanyData(data);
   };
 
@@ -1870,7 +1878,7 @@ export default function PRDashboard() {
               </div>
 
               <div className="border-t pt-6 flex gap-3">
-                <button onClick={generatePressRelease} disabled={isLoading} className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 flex items-center justify-center disabled:bg-indigo-300">
+                <button onClick={generatePressRelease} disabled={isLoading} className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2">
                   {isLoading ? <Loader className="h-5 w-5 mr-2 animate-spin"/> : <Sparkles className="h-5 w-5 mr-2"/>}
                   Generate Press Release
                 </button>
