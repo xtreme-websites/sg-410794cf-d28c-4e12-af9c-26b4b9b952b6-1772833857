@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Newspaper, Clipboard, Loader, Sparkles, AlertTriangle, CornerUpLeft, Briefcase, BarChart2, ShoppingCart, CheckCircle, Settings, Zap, Menu, X, ExternalLink, Upload, TrendingUp, TrendingDown, Shield, Copy, Lock } from 'lucide-react';
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Menu, X, TrendingUp, FileText, Sparkles, Search, BarChart3, Copy, Check, Loader, Download, ExternalLink, Building2, Lock, Clipboard, CornerUpLeft, CheckCircle, Shield, AlertTriangle, ShoppingCart, Newspaper, TrendingDown } from 'lucide-react';
 import KeywordTagInput from './KeywordTagInput';
+import { supabase } from "@/integrations/supabase/client";
+import CompanyDataModal from './CompanyDataModal';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 interface TrendingTopic {
@@ -56,8 +57,20 @@ interface Order {
 }
 
 export default function PRDashboard() {
+  const [activeTab, setActiveTab] = useState('trending');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCompanyDataModalOpen, setIsCompanyDataModalOpen] = useState(false);
+  const [companyData, setCompanyData] = useState<{
+    company_name: string;
+    industry: string;
+    website_url: string;
+    about_company: string;
+    address: string;
+    phone: string;
+    email: string;
+  } | null>(null);
+
   // Core State
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
@@ -146,7 +159,38 @@ export default function PRDashboard() {
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
+    loadCompanyData();
   }, []);
+
+  const loadCompanyData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('company_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading company data:', error);
+        return;
+      }
+
+      if (data) {
+        setCompanyData(data);
+      }
+    } catch (e) {
+      console.error('Error loading company data:', e);
+    }
+  };
+
+  const handleCompanyDataSave = (data: any) => {
+    setCompanyData(data);
+  };
 
   const OUTLETS = [
     'Yahoo Finance', 'NCN Central', 'NCN Platte Valley', 'NCN Metro', 'NCN MidPlains', 
@@ -576,184 +620,335 @@ export default function PRDashboard() {
     </button>
   );
 
+  const menuItems = [
+    { id: 'trending', label: 'Trending Topics', icon: TrendingUp },
+    { id: 'competitor', label: 'Competitor Analysis', icon: BarChart3 },
+    { id: 'generator', label: 'Press Release Generator', icon: FileText },
+    { id: 'audit', label: 'Media Presence Audit', icon: Search },
+  ];
+
+  const analyzeTrending = async () => {
+    if (!companyData) {
+      alert('Please set up your company data first');
+      return;
+    }
+
+    setIsLoadingTrending(true);
+    setTrendingResults(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('trending-topics', {
+        body: { 
+          industry: companyData.industry,
+          keywords: trendingKeywords,
+          companyName: companyData.company_name
+        }
+      });
+
+      if (error) throw error;
+      setTrendingResults(data.analysis);
+    } catch (e) {
+      console.error('Error analyzing trends:', e);
+      setTrendingResults('Error analyzing trending topics. Please try again.');
+    }
+    
+    setIsLoadingTrending(false);
+  };
+
+  const analyzeCompetitors = async () => {
+    if (!companyData) {
+      alert('Please set up your company data first');
+      return;
+    }
+
+    if (!competitorUrls.trim()) {
+      alert('Please enter at least one competitor URL');
+      return;
+    }
+
+    setIsLoadingCompetitor(true);
+    setCompetitorResults(null);
+    
+    try {
+      const urls = competitorUrls.split('\n').filter(url => url.trim());
+      const { data, error } = await supabase.functions.invoke('competitor-analysis', {
+        body: { 
+          companyName: companyData.company_name,
+          companyWebsite: companyData.website_url,
+          industry: companyData.industry,
+          competitorUrls: urls
+        }
+      });
+
+      if (error) throw error;
+      setCompetitorResults(data.analysis);
+    } catch (e) {
+      console.error('Error analyzing competitors:', e);
+      setCompetitorResults('Error analyzing competitors. Please try again.');
+    }
+    
+    setIsLoadingCompetitor(false);
+  };
+
   return (
-    <div className={`min-h-screen w-full bg-gray-100 text-gray-900 flex flex-col lg:flex-row font-sans`}>
-      <div className="lg:hidden bg-white border-b p-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold flex items-center">
-          <Sparkles className="h-5 w-5 text-indigo-500 mr-2"/>
-          Media Blast Boosters
-        </h1>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-600 hover:text-gray-700">
-          {sidebarOpen ? <X className="h-6 w-6"/> : <Menu className="h-6 w-6"/>}
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <CompanyDataModal
+        isOpen={isCompanyDataModalOpen}
+        onClose={() => setIsCompanyDataModalOpen(false)}
+        onSave={handleCompanyDataSave}
+        currentData={companyData}
+      />
 
-      <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:relative inset-y-0 left-0 w-full sm:w-80 lg:w-96 bg-white border-r border-gray-200 p-6 space-y-4 overflow-y-auto transition-transform duration-300 ease-in-out z-40 lg:z-auto`}>
-        <div className="hidden lg:flex items-center justify-between">
-          <h1 className="text-2xl font-bold flex items-center">
-            <Sparkles className="h-6 w-6 text-indigo-500 mr-2"/>
-            Media Blast Boosters
-          </h1>
-          <button onClick={() => setShowSettings(true)} className="text-gray-500 hover:text-gray-700">
-            <Settings className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-          <input 
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Quote Attribution</label>
-          <input 
-            value={quoteAttribution}
-            onChange={(e) => setQuoteAttribution(e.target.value)}
-            className="w-full border border-gray-300 p-2 rounded-md"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Your Industry</label>
-          <input 
-            ref={industryRef} 
-            defaultValue={industry} 
-            className="w-full border border-gray-300 p-2 rounded-md"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Your Website URL</label>
-          <input 
-            ref={urlRef} 
-            defaultValue={url} 
-            className="w-full border border-gray-300 p-2 rounded-md"
-          />
-        </div>
-        
-        <button 
-          onClick={runPRAnalysis} 
-          disabled={isLoading}
-          className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg shadow-md hover:bg-indigo-700 disabled:bg-indigo-300 flex items-center justify-center font-semibold"
-        >
-          {isLoading ? <Loader className="h-5 w-5 mr-2 animate-spin"/> : <Zap className="h-5 w-5 mr-2"/>}
-          Run PR Analysis
-        </button>
-      </aside>
-
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-        <nav className="flex flex-wrap space-x-2 sm:space-x-3 border-b border-gray-200 mb-6">
-          <TabButton name="topics" icon={<Newspaper size={16}/>} label="Trending Topics" />
-          <TabButton name="benchmark" icon={<BarChart2 size={16}/>} label="Market Benchmarking" />
-          <TabButton name="widgets" icon={<Shield size={16}/>} label="Brand Trust Assets" />
-          <TabButton name="pr" icon={<Briefcase size={16}/>} label="Press Release Creator" />
-          <TabButton name="orders" icon={<ShoppingCart size={16}/>} label="PR Orders" />
-        </nav>
-
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-6">
-            <div className="flex">
-              <AlertTriangle className="h-5 w-5 text-red-400 mr-3"/>
-              <p className="text-sm text-red-700">{error}</p>
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-indigo-600">Media Blast Boosters</h1>
+              <button
+                onClick={() => setIsCompanyDataModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              >
+                <Building2 className="h-4 w-4"/>
+                Company Data
+              </button>
             </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6"/> : <Menu className="h-6 w-6"/>}
+            </button>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex space-x-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeTab === item.id
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4"/>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Mobile Navigation */}
+          {isMobileMenuOpen && (
+            <nav className="lg:hidden py-4 border-t border-gray-200">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all mb-1 ${
+                      activeTab === item.id
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5"/>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {!companyData && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-800">
+              💡 <strong>Get Started:</strong> Click "Company Data" in the header to set up your company information and unlock all features.
+            </p>
           </div>
         )}
 
-        {activeTab === 'topics' && (
-          <div>
-            <div className="mb-6 p-4 bg-gray-100 rounded-lg border">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Trending Topics in {industry}</h3>
-              <p className="text-sm text-gray-600">Latest news and trending stories.</p>
-            </div>
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                <Loader className="h-12 w-12 animate-spin text-indigo-600 mb-4"/>
-                <p className="text-lg">Loading...</p>
+        {activeTab === 'trending' && (
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
+                <TrendingUp className="h-6 w-6 text-white"/>
               </div>
-            ) : trendingTopics.length > 0 ? (
-              <div className="space-y-4">
-                {trendingTopics.map((t, i) => (
-                  <div key={i} className="bg-white border rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-start gap-2 mb-2">
-                      <h3 className="font-semibold text-gray-900 text-lg flex-1">{t.title}</h3>
-                      <a 
-                        href={t.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 hover:text-indigo-800 flex-shrink-0"
-                        title="View original article"
-                      >
-                        <ExternalLink className="h-5 w-5"/>
-                      </a>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-4">{t.summary}</p>
-                    
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => generateContentIdeas(t)}
-                          className="bg-indigo-100 text-indigo-700 text-sm font-semibold px-4 py-2 rounded-md hover:bg-indigo-200 transition-all"
-                        >
-                          💡 Content Ideas
-                        </button>
-                        <button 
-                          onClick={() => selectTopicForPR(t)}
-                          className="bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-md hover:bg-indigo-700 transition-all"
-                        >
-                          Create PR
-                        </button>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Newspaper className="h-3 w-3"/>
-                          {t.source}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          📅 {t.date}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {showContentIdeas[t.title] && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                        <h4 className="font-semibold text-gray-800 text-sm mb-3">💡 Content Ideas</h4>
-                        {contentIdeas[t.title] ? (
-                          <div className="space-y-2">
-                            {contentIdeas[t.title].map((idea, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => selectTopicForPR(t, idea)}
-                                className="block text-left text-sm text-gray-700 hover:text-indigo-600 hover:underline w-full"
-                              >
-                                {idx + 1}. {idea}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Loader className="h-4 w-4 animate-spin"/>
-                            Generating ideas...
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Trending Topics Analyzer</h2>
+                <p className="text-gray-600">Discover what's trending in your industry</p>
+              </div>
+            </div>
+
+            {!companyData ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4"/>
+                <p className="text-gray-600 mb-4">Please set up your company data first to use this feature.</p>
+                <button
+                  onClick={() => setIsCompanyDataModalOpen(true)}
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-semibold"
+                >
+                  Set Up Company Data
+                </button>
               </div>
             ) : (
-              <div className="text-center text-gray-500 py-16">
-                <Newspaper className="h-16 w-16 mx-auto text-gray-300 mb-4"/>
-                <p>Click Run PR Analysis to discover topics.</p>
+              <>
+                <div className="space-y-4 mb-6">
+                  <KeywordTagInput
+                    value={trendingKeywords}
+                    onChange={setTrendingKeywords}
+                    placeholder="Add keywords to refine trending topics (optional)"
+                    label="Keywords (Optional)"
+                  />
+                </div>
+
+                <button
+                  onClick={analyzeTrending}
+                  disabled={isLoadingTrending}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-4 px-8 rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
+                >
+                  {isLoadingTrending ? (
+                    <>
+                      <Loader className="h-5 w-5 animate-spin"/>
+                      Analyzing Trends...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5"/>
+                      Analyze Trending Topics
+                    </>
+                  )}
+                </button>
+
+                {trendingResults && (
+                  <div className="mt-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold text-gray-900">Analysis Results</h3>
+                      <button
+                        onClick={() => copyToClipboard(trendingResults, 'trending')}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        {copiedStates.trending ? (
+                          <>
+                            <Check className="h-4 w-4 text-green-600"/>
+                            <span className="text-sm font-medium text-green-600">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4"/>
+                            <span className="text-sm font-medium">Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="prose max-w-none bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-indigo-200">
+                      <div className="whitespace-pre-wrap text-gray-800">{trendingResults}</div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'competitor' && (
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
+                <BarChart3 className="h-6 w-6 text-white"/>
               </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Competitor Analysis</h2>
+                <p className="text-gray-600">Benchmark against your competition</p>
+              </div>
+            </div>
+
+            {!companyData ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4"/>
+                <p className="text-gray-600 mb-4">Please set up your company data first to use this feature.</p>
+                <button
+                  onClick={() => setIsCompanyDataModalOpen(true)}
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 font-semibold"
+                >
+                  Set Up Company Data
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Competitor Websites
+                    </label>
+                    <textarea
+                      value={competitorUrls}
+                      onChange={(e) => setCompetitorUrls(e.target.value)}
+                      placeholder="Enter competitor website URLs (one per line)&#10;https://competitor1.com&#10;https://competitor2.com"
+                      className="w-full border border-gray-300 rounded-lg p-4 h-32 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={analyzeCompetitors}
+                  disabled={isLoadingCompetitor || !competitorUrls.trim()}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-4 px-8 rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
+                >
+                  {isLoadingCompetitor ? (
+                    <>
+                      <Loader className="h-5 w-5 animate-spin"/>
+                      Analyzing Competitors...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5"/>
+                      Analyze Competitors
+                    </>
+                  )}
+                </button>
+
+                {competitorResults && (
+                  <div className="mt-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold text-gray-900">Analysis Results</h3>
+                      <button
+                        onClick={() => copyToClipboard(competitorResults, 'competitor')}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        {copiedStates.competitor ? (
+                          <>
+                            <Check className="h-4 w-4 text-green-600"/>
+                            <span className="text-sm font-medium text-green-600">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4"/>
+                            <span className="text-sm font-medium">Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="prose max-w-none bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
+                      <div className="whitespace-pre-wrap text-gray-800">{competitorResults}</div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
