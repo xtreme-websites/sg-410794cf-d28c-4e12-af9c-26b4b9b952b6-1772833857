@@ -1,0 +1,23 @@
+
+# Softgen - prevent committing dependencies and build artifacts
+node_modules/
+.next/
+dist/
+build/
+.cache/
+.vercel/
+.turbo/
+out/
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.jwt
+service-account*.json
+firebase-service-account.json
+credentials.json
+.git-credentials
+.secrets
+secrets/
