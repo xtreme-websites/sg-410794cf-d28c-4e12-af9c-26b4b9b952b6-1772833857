@@ -782,14 +782,6 @@ export default function PRDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!companyData && (
-          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              💡 <strong>Get Started:</strong> Click "Company Data" in the header to set up your company information and unlock all features.
-            </p>
-          </div>
-        )}
-
         {activeTab === 'trending' && (
           <div className="bg-white rounded-xl shadow-lg p-8">
             <div className="flex items-center gap-3 mb-6">
