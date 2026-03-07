@@ -7,6 +7,12 @@ import type { Database } from "./types";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+console.log("Supabase Config:", {
+  url: SUPABASE_URL,
+  hasKey: !!SUPABASE_ANON_KEY,
+  keyPrefix: SUPABASE_ANON_KEY?.substring(0, 20) + "..."
+});
+
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error("Missing Supabase environment variables:", {
     hasUrl: !!SUPABASE_URL,

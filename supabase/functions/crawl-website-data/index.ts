@@ -17,19 +17,18 @@ serve(async (req) => {
       throw new Error('Website URL is required')
     }
 
-    // In production, this would use a real web scraping service or API
-    // For now, we'll use Gemini AI to simulate crawling
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
+    const CLAUDE_API_KEY = Deno.env.get('CLAUDE_API_KEY')
     
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not configured')
+    if (!CLAUDE_API_KEY) {
+      throw new Error('CLAUDE_API_KEY not configured')
     }
 
     const prompt = `Analyze the website at ${websiteUrl} and extract the following company information in JSON format:
 {
-  "companyName": "company name",
+  "name": "company name",
   "industry": "primary industry or sector",
   "about": "brief description of the company (2-3 sentences)",
+  "services": "comma-separated list of main services or products",
   "address": "physical address if available",
   "phone": "contact phone number if available",
   "email": "contact email if available"
@@ -38,25 +37,30 @@ serve(async (req) => {
 If any information is not available or cannot be determined, use an empty string for that field.
 Return ONLY the JSON object, no additional text.`
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }]
-        })
-      }
-    )
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      })
+    })
 
     if (!response.ok) {
-      throw new Error('Failed to analyze website')
+      const errorText = await response.text()
+      throw new Error(`Claude API error: ${errorText}`)
     }
 
     const data = await response.json()
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+    const text = data.content?.[0]?.text || '{}'
     
     // Extract JSON from response (remove markdown code blocks if present)
     let jsonText = text.trim()
