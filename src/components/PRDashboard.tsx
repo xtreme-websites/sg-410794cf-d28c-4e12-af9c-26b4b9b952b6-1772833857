@@ -61,44 +61,38 @@ function KeywordTagInput({ keywords, onChange, maxKeywords = 5 }) {
   );
 }
 
-// ─── Claude API ───────────────────────────────────────────────────────────────
-async function callClaude(userContent, system = "", maxTokens = 1000, apiKey = "") {
-  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
-  if (apiKey) headers["x-api-key"] = apiKey;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: maxTokens,
-      ...(system ? { system } : {}),
-      messages: [{ role: "user", content: userContent }]
-    })
+// ─── Claude API via Supabase Edge Function ───────────────────────────────────
+async function callClaude(userContent: string, system = "", maxTokens = 1000, apiKey = "") {
+  const { data, error } = await supabase.functions.invoke('call-claude-api', {
+    body: { 
+      prompt: userContent,  // Changed from userContent to prompt
+      system, 
+      maxTokens,
+      apiKey 
+    }
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content[0].text;
+  
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  
+  return data.result;
 }
 
-// Claude with web_search tool — used for website crawling
-async function callGemini(prompt, apiKey = "") {
-  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
-  if (apiKey) headers["x-api-key"] = apiKey;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: prompt }]
-    })
+// Claude with web_search tool — used for website crawling (routed via Edge Function)
+async function callGemini(prompt: string, apiKey = "") {
+  const { data, error } = await supabase.functions.invoke('call-claude-api', {
+    body: { 
+      prompt: prompt,  // Consistent parameter name
+      system: "",
+      maxTokens: 1000,
+      apiKey 
+    }
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  const text = (data.content ?? []).filter(b => b.type === "text").map(b => b.text).join("");
-  if (!text) throw new Error("Empty response");
-  return text;
+  
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  
+  return data.result;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -147,7 +141,7 @@ const GlobeIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 
 const PhoneIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
 const MailIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
 const MapPinIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
-const SettingsIcon  = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+const SettingsIcon  = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06-.06a2 2 0 0 1-2.83 2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function PRDashboard() {
