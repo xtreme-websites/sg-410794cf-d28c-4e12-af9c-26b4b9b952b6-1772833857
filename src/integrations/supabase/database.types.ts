@@ -24,7 +24,9 @@ export type Database = {
           email: string | null
           id: string
           industry: string
+          list_of_services: string | null
           phone: string | null
+          quote_attribution: string | null
           updated_at: string | null
           user_id: string | null
           website_url: string
@@ -37,7 +39,9 @@ export type Database = {
           email?: string | null
           id?: string
           industry: string
+          list_of_services?: string | null
           phone?: string | null
+          quote_attribution?: string | null
           updated_at?: string | null
           user_id?: string | null
           website_url: string
@@ -50,7 +54,9 @@ export type Database = {
           email?: string | null
           id?: string
           industry?: string
+          list_of_services?: string | null
           phone?: string | null
+          quote_attribution?: string | null
           updated_at?: string | null
           user_id?: string | null
           website_url?: string
