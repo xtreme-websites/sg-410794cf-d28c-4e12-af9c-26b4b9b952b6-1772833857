@@ -399,17 +399,14 @@ export default function PRDashboard() {
 
     // Build the priority URL list for website crawls
     const PRIORITY_PATHS = [
-      { path:"",             label:"Home"       },
-      { path:"/about",       label:"About"      },
-      { path:"/about-us",    label:"About Us"   },
-      { path:"/services",    label:"Services"   },
-      { path:"/contact",     label:"Contact"    },
-      { path:"/contact-us",  label:"Contact Us" },
-      { path:"/team",        label:"Team"       },
-      { path:"/our-team",    label:"Our Team"   },
-      { path:"/leadership",  label:"Leadership" },
-      { path:"/blog",        label:"Blog"       },
-      { path:"/news",        label:"News"       },
+      { path:"",            label:"Home"       },
+      { path:"/about",      label:"About"      },
+      { path:"/about-us",   label:"About Us"   },
+      { path:"/services",   label:"Services"   },
+      { path:"/contact",    label:"Contact"    },
+      { path:"/contact-us", label:"Contact Us" },
+      { path:"/blog",       label:"Blog"       },
+      { path:"/news",       label:"News"       },
     ];
 
     const isWebsite = crawlSourceType === "website";
@@ -423,10 +420,10 @@ export default function PRDashboard() {
       : [rawUrl];
 
     const sourceNote = crawlSourceType === "google"
-      ? `This URL opens a Google search page with a Business Profile card on the RIGHT side of the page. ONLY extract data from that right-side business profile card (name, address, phone, hours, website, category/industry, description). IGNORE all organic search results on the left side of the page.`
+      ? `This URL is a short Google Business Profile link (e.g. share.google/xxxxx or maps.app.goo.gl/xxxxx) that redirects to a Google search page. Follow the redirect and load the final page. On that page there will be a Business Profile card — it may appear on the RIGHT side, or as a prominent panel at the top. Extract ONLY data from that business profile card: business name, address, phone number, website URL, business category/industry, and description. COMPLETELY IGNORE any organic search results or web listings.`
       : crawlSourceType === "summary"
       ? `This is a plain-text summary file containing pre-formatted company data.`
-      : `These are pages from the company website. Prioritise: Home for company name/industry, About/Team/Leadership for CEO/owner/founder name and title, Contact for address/phone/email, Services for list of services. Also check Blog/News index page for author bylines (e.g. "Written by", "Posted by", "By [Name]") to find the owner or CEO name. IMPORTANT: Email addresses are often displayed as plain text (e.g. admin@company.com) inside paragraph tags on the Contact page — NOT as mailto: links. Read all visible text carefully.`;
+      : `These are pages from the company website. Prioritise: Home for company name/industry, About for company description, Services for list of services, Contact for address/phone/email. For the Blog/News page, look ONLY for the author name in byline elements — common patterns include: <div class="authorBar"><span>By Carlos Medina</span></div>, "Written by [Name]", "Posted by [Name]", or "By [Name]" anywhere on the page. IMPORTANT: Email addresses are often displayed as plain text (e.g. admin@company.com) inside paragraph tags on the Contact page — NOT as mailto: links. Read all visible text carefully.`;
 
     const prompt = `Please visit and read the following URL(s) to extract company information.
 
@@ -440,7 +437,7 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
   "name": "Company name",
   "industry": "Industry or sector",
   "websiteUrl": "${isWebsite ? rawUrl : ""}",
-  "quoteAttribution": "Full Name — Title, Company (find owner/CEO/founder from About, Team, Leadership pages, or blog post bylines like 'By [Name]' or 'Written by [Name]')",
+  "quoteAttribution": "Full Name — Title, Company (find owner/CEO/founder from About page, or from blog post bylines — look for authorBar divs, 'By [Name]', 'Written by [Name]' patterns on the Blog/News page)",
   "about": "2-3 sentence company description",
   "services": "Comma-separated list of main services or products",
   "address": "Full street address (from Contact page or Google Profile)",
@@ -553,12 +550,14 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
         const link    = el.querySelector("link")?.textContent?.trim() || "";
         const pubDate = el.querySelector("pubDate")?.textContent?.trim() || "";
         const source  = el.querySelector("source")?.textContent?.trim() || "";
-        const desc    = el.querySelector("description")?.textContent?.replace(/<[^>]+>/g,"").trim() || "";
+        const rawDesc = el.querySelector("description")?.textContent?.replace(/<[^>]+>/g,"").trim() || "";
+        // Decode HTML entities (&nbsp; &#160; &amp; etc.)
+        const desc = rawDesc.replace(/&nbsp;/g," ").replace(/&#160;/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#\d+;/g," ").replace(/\s{2,}/g," ").trim();
         const d       = pubDate ? new Date(pubDate) : null;
         const date    = d && !isNaN(d)
           ? `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`
           : "";
-        return { title, summary: desc.slice(0,220)+"…", source, date, url: link, relevance:"High", _desc: desc };
+        return { title, summary: desc.slice(0,286)+"…", source, date, url: link, relevance:"High", _desc: desc };
       }).filter(t => t.title && t.url && !isLowQuality(t.title, t._desc))
         .map(({ _desc, ...t }) => t)
         .slice(0, 6);
@@ -1334,7 +1333,7 @@ Make it genuinely newsworthy and professionally written.`;
                 <div style={{ display:"flex", gap:".5rem", marginBottom:".85rem", background:"#f1f5f9", borderRadius:".5rem", padding:".25rem" }}>
                   {[
                     { key:"website", label:"🌐 Website URL",      placeholder:"https://yourcompany.com"          },
-                    { key:"google",  label:"📍 Google Profile",   placeholder:"https://g.page/your-business"     },
+                    { key:"google",  label:"📍 Google Profile",   placeholder:"https://share.google/123456"     },
                     { key:"summary", label:"📄 Summary File URL", placeholder:"https://yoursite.com/summary.txt" },
                   ].map(opt => (
                     <button key={opt.key} onClick={()=>{ setCrawlSourceType(opt.key); setAiCrawlUrl(""); setCrawlError(null); }}
@@ -1351,7 +1350,7 @@ Make it genuinely newsworthy and professionally written.`;
                 {/* Dynamic URL input */}
                 {[
                   { key:"website", label:"Website URL",      ph:"https://yourcompany.com"          },
-                  { key:"google",  label:"Google Profile URL",ph:"https://g.page/your-business"     },
+                  { key:"google",  label:"Google Profile URL",ph:"https://share.google/123456"     },
                   { key:"summary", label:"Summary File URL", ph:"https://yoursite.com/summary.txt" },
                 ].map(opt => crawlSourceType===opt.key && (
                   <div key={opt.key}>
