@@ -122,7 +122,11 @@ function KeywordTagInput({ keywords, onChange, maxKeywords = 5 }) {
 
 // ─── Claude API ───────────────────────────────────────────────────────────────
 async function callClaude(userContent, system = "", maxTokens = 1000, apiKey = "") {
-  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+  const headers = {
+    "Content-Type": "application/json",
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
   if (apiKey) headers["x-api-key"] = apiKey;
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -141,7 +145,12 @@ async function callClaude(userContent, system = "", maxTokens = 1000, apiKey = "
 
 // Claude with web_search tool — used for website crawling
 async function callGemini(prompt, apiKey = "") {
-  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+  const headers = {
+    "Content-Type": "application/json",
+    "anthropic-version": "2023-06-01",
+    "anthropic-beta": "web-search-2025-03-05",
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
   if (apiKey) headers["x-api-key"] = apiKey;
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
