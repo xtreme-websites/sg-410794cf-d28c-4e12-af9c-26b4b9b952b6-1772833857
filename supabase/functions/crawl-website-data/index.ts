@@ -13,14 +13,18 @@ serve(async (req) => {
   try {
     const { websiteUrl } = await req.json()
 
+    console.log('Received websiteUrl:', websiteUrl)
+
     if (!websiteUrl) {
       throw new Error('Website URL is required')
     }
 
     const CLAUDE_API_KEY = Deno.env.get('CLAUDE_API_KEY')
     
+    console.log('CLAUDE_API_KEY exists:', !!CLAUDE_API_KEY)
+    
     if (!CLAUDE_API_KEY) {
-      throw new Error('CLAUDE_API_KEY not configured')
+      throw new Error('CLAUDE_API_KEY not configured in Edge Function secrets')
     }
 
     const prompt = `Analyze the website at ${websiteUrl} and extract the following company information in JSON format:
@@ -36,6 +40,8 @@ serve(async (req) => {
 
 If any information is not available or cannot be determined, use an empty string for that field.
 Return ONLY the JSON object, no additional text.`
+
+    console.log('Calling Claude API...')
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -54,12 +60,17 @@ Return ONLY the JSON object, no additional text.`
       })
     })
 
+    console.log('Claude API response status:', response.status)
+
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('Claude API error:', errorText)
       throw new Error(`Claude API error: ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('Claude API response received')
+    
     const text = data.content?.[0]?.text || '{}'
     
     // Extract JSON from response (remove markdown code blocks if present)
@@ -76,6 +87,8 @@ Return ONLY the JSON object, no additional text.`
     
     const companyData = JSON.parse(jsonText.trim())
 
+    console.log('Successfully extracted company data')
+
     return new Response(
       JSON.stringify(companyData),
       { 
@@ -87,7 +100,10 @@ Return ONLY the JSON object, no additional text.`
   } catch (error) {
     console.error('Error in crawl-website-data function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.toString()
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400 
