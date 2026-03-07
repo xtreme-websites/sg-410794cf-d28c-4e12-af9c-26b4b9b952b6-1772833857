@@ -143,30 +143,17 @@ async function callClaude(userContent, system = "", maxTokens = 1000, apiKey = "
   return data.content[0].text;
 }
 
-// Claude with web_search tool — used for website crawling
+// Claude with web_search tool — proxied via Supabase Edge Function to avoid CORS
 async function callGemini(prompt, apiKey = "") {
-  const headers = {
-    "Content-Type": "application/json",
-    "anthropic-version": "2023-06-01",
-    "anthropic-beta": "web-search-2025-03-05",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
-  if (apiKey) headers["x-api-key"] = apiKey;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/claude-websearch", {
     method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: prompt }]
-    })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, apiKey })
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  const text = (data.content ?? []).filter(b => b.type === "text").map(b => b.text).join("");
-  if (!text) throw new Error("Empty response");
-  return text;
+  if (data.error) throw new Error(data.error);
+  if (!data.text) throw new Error("Empty response");
+  return data.text;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
