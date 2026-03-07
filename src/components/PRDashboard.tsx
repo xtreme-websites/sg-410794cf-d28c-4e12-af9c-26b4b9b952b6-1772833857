@@ -424,7 +424,7 @@ export default function PRDashboard() {
       ? `This is a Google Business Profile page.`
       : crawlSourceType === "summary"
       ? `This is a plain-text summary file containing pre-formatted company data.`
-      : `These are pages from the company website. Prioritise: Home for company name/industry, About/Team for CEO/owner name, Contact for address/phone/email, Services for list of services.`;
+      : `These are pages from the company website. Prioritise: Home for company name/industry, About/Team for CEO/owner name, Contact for address/phone/email, Services for list of services. IMPORTANT: Email addresses are often displayed as plain text (e.g. admin@company.com) inside paragraph tags on the Contact page — NOT as mailto: links. Read all visible text carefully.`;
 
     const prompt = `Please visit and read the following URL(s) to extract company information.
 
@@ -443,7 +443,7 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
   "services": "Comma-separated list of main services or products",
   "address": "Full street address (from Contact page only)",
   "phone": "Phone number (from Contact page only)",
-  "email": "Contact email (from Contact page only)"
+  "email": "Contact email — look for plain text email addresses (e.g. admin@domain.com) in paragraph text on the Contact page. They are usually displayed as visible text, NOT as mailto: links. Also check footer and About page."
 }`;
 
     try {
