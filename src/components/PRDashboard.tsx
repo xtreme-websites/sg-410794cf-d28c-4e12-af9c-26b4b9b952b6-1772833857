@@ -7,10 +7,10 @@ const store = {
     try {
       if (typeof window.storage?.get === "function") {
         const r = await window.storage.get(key);
-        return r?.value ?? null;
+        return r?.value ?? null;  // window.storage returns {value: "..."}
       }
     } catch {}
-    try { return localStorage.getItem(key); } catch {}
+    try { return localStorage.getItem(key); } catch {}  // localStorage returns string directly
     return null;
   },
   set: async (key, value) => {
@@ -253,14 +253,14 @@ export default function PRDashboard() {
 
   useEffect(() => {
     (async () => {
-      // Load Claude API key from local storage
+      // Load Claude API key
       try {
         const r = await store.get("mbb:claudeKey");
-        if (r?.value) { setClaudeApiKey(r.value); setClaudeKeyDraft(r.value); }
+        if (r) { setClaudeApiKey(r); setClaudeKeyDraft(r); }
       } catch {}
       try {
         const r = await store.get("mbb:webhookUrl");
-        if (r?.value) { setWebhookUrl(r.value); setWebhookDraft(r.value); }
+        if (r) { setWebhookUrl(r); setWebhookDraft(r); }
       } catch {}
 
       // Load company profile from Supabase using location_id
@@ -284,14 +284,24 @@ export default function PRDashboard() {
         } else {
           // Fall back to local cache
           const cached = await store.get("mbb:companyData");
-          if (cached?.value) setCompanyData(JSON.parse(cached.value));
+          if (cached) setCompanyData(JSON.parse(cached));
         }
       } catch {
         try {
           const cached = await store.get("mbb:companyData");
-          if (cached?.value) setCompanyData(JSON.parse(cached.value));
+          if (cached) setCompanyData(JSON.parse(cached));
         } catch {}
       }
+
+      // Restore trending topics and competitor data from cache
+      try {
+        const t = await store.get("mbb:trendingTopics");
+        if (t) { const parsed = JSON.parse(t); if (parsed.length > 0) { setTrendingTopics(parsed); setTopicsFetched(parsed.length); } }
+      } catch {}
+      try {
+        const c = await store.get("mbb:competitorData");
+        if (c) setCompetitorData(JSON.parse(c));
+      } catch {}
 
       // Load orders from Supabase
       try {
@@ -675,7 +685,10 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
     }
 
     if (all.length === 0) setError("Could not load articles — try again in a moment.");
-    else showToast(`${all.length} live articles found!`);
+    else {
+      showToast(`${all.length} live articles found!`);
+      try { await store.set("mbb:trendingTopics", JSON.stringify(all)); } catch {}
+    }
     setIsLoading(false);
   };
 
@@ -692,6 +705,7 @@ Replace example numbers with realistic varied scores 0-100. Include exactly 3 co
       );
       const data = JSON.parse(text.replace(/```json|```/g, "").trim());
       setCompetitorData(data);
+      try { await store.set("mbb:competitorData", JSON.stringify(data)); } catch {}
       // Save to Supabase
       try {
         await supabase.from("competitor_analysis").insert({
@@ -961,7 +975,6 @@ Make it genuinely newsworthy and professionally written.`;
                       <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginBottom:".6rem" }}>
                         <div style={{ flex:1 }}>
                           <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", marginBottom:".35rem" }}>
-                            {t.relevance==="High"&&<span style={{ background:"#fef3c7",color:"#92400e",fontSize:".65rem",fontWeight:700,padding:".15rem .45rem",borderRadius:"99px",whiteSpace:"nowrap",marginTop:"2px" }}>🔥 HIGH</span>}
                             <h3 style={{ fontSize:".95rem", fontWeight:700, color:"#0f172a", lineHeight:1.4 }}>{t.title}</h3>
                           </div>
                           <p style={{ fontSize:".825rem", color:"#64748b", lineHeight:1.6 }}>{t.summary}</p>
