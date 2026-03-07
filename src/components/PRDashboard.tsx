@@ -410,24 +410,71 @@ export default function PRDashboard() {
     ];
 
     const isWebsite = crawlSourceType === "website";
-    const allPages  = isWebsite ? PRIORITY_PATHS : [{ path:"", label: crawlSourceType === "google" ? "Google Profile" : "Summary File" }];
+    const isSummary = crawlSourceType === "summary";
+    const allPages  = isWebsite ? PRIORITY_PATHS : [{ path:"", label:"Summary File" }];
 
     setCrawlPages(allPages.map(p => ({ ...p, status:"loading" })));
+
+    // ── SUMMARY FILE: fetch raw markdown and parse directly (no AI needed) ──
+    if (isSummary) {
+      setCrawlStatus("Fetching summary file…");
+      try {
+        const edgeRes  = await fetch(`${SUPABASE_URL}/functions/v1/claude-websearch`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ mode:"fetch-summary", url: rawUrl })
+        });
+        const edgeData = await edgeRes.json();
+        if (!edgeData.content) throw new Error(edgeData.error || "Empty response");
+
+        const md = edgeData.content;
+
+        // Parse markdown fields — handles "**Label**: Value" and "- Value" list items
+        const field = (patterns) => {
+          for (const pat of patterns) {
+            const m = md.match(pat);
+            if (m && m[1] && m[1].trim() && m[1].trim() !== "null") return m[1].trim();
+          }
+          return "";
+        };
+        const listItems = (section) => {
+          const m = md.match(new RegExp(`##\\s*${section}[\\s\\S]*?\\n((?:\\s*-[^\\n]+\\n?)+)`, "i"));
+          if (!m) return "";
+          return m[1].split("\n").map(l => l.replace(/^\s*-\s*/, "").trim()).filter(Boolean).join(", ");
+        };
+
+        const parsed = {
+          name:             field([/\*\*Company Name\*\*:\s*(.+)/i, /^#\s+BRAND IDENTITY:\s*(.+)/im]),
+          industry:         field([/\*\*Industry\*\*:\s*(.+)/i, /\*\*Sector\*\*:\s*(.+)/i]),
+          websiteUrl:       field([/\*\*Website\*\*:\s*(.+)/i]),
+          quoteAttribution: "",
+          about:            field([/\*\*Tagline\*\*:\s*(.+)/i, /\*\*Description\*\*:\s*(.+)/i]),
+          services:         listItems("CORE SERVICES"),
+          address:          field([/\*\*Address\*\*:\s*(.+)/i]),
+          phone:            field([/\*\*Phone\*\*:\s*(.+)/i]),
+          email:            field([/\*\*Email\*\*:\s*(.+)/i]),
+        };
+
+        setCrawlPages(allPages.map(p => ({ ...p, status:"ok" })));
+        setCdDraft(prev => ({ ...prev, ...parsed }));
+        setCdMode("manual");
+        showToast("Summary file loaded — review and save!");
+      } catch(e) {
+        setCrawlPages(prev => prev.map(p => ({ ...p, status:"skip" })));
+        setCrawlError("Failed to fetch summary: " + (e.message || "unknown error"));
+      }
+      setCrawlStatus("");
+      setIsCrawling(false);
+      return;
+    }
+
+    // ── WEBSITE: AI web crawl ───────────────────────────────────────────────
     setCrawlStatus("Searching with AI…");
-
-    const urlList = isWebsite
-      ? allPages.map(p => rawUrl + p.path)
-      : [rawUrl];
-
-    const sourceNote = crawlSourceType === "google"
-      ? `This URL is a short Google Business Profile link (e.g. share.google/xxxxx or maps.app.goo.gl/xxxxx) that redirects to a Google search page. Follow the redirect and load the final page. On that page there will be a Business Profile card — it may appear on the RIGHT side, or as a prominent panel at the top. Extract ONLY data from that business profile card: business name, address, phone number, website URL, business category/industry, and description. COMPLETELY IGNORE any organic search results or web listings.`
-      : crawlSourceType === "summary"
-      ? `This is a plain-text summary file containing pre-formatted company data.`
-      : `These are pages from the company website. Prioritise: Home for company name/industry, About for company description, Services for list of services, Contact for address/phone/email. For the Blog/News page, look ONLY for the author name in byline elements — common patterns include: <div class="authorBar"><span>By Carlos Medina</span></div>, "Written by [Name]", "Posted by [Name]", or "By [Name]" anywhere on the page. IMPORTANT: Email addresses are often displayed as plain text (e.g. admin@company.com) inside paragraph tags on the Contact page — NOT as mailto: links. Read all visible text carefully.`;
+    const urlList = allPages.map(p => rawUrl + p.path);
 
     const prompt = `Please visit and read the following URL(s) to extract company information.
 
-${sourceNote}
+These are pages from the company website. Prioritise: Home for company name/industry, About for company description, Services for list of services, Contact for address/phone/email. For the Blog/News page, look ONLY for the author name in byline elements — common patterns include: <div class="authorBar"><span>By Carlos Medina</span></div>, "Written by [Name]", "Posted by [Name]", or "By [Name]" anywhere on the page. IMPORTANT: Email addresses are often displayed as plain text (e.g. admin@company.com) inside paragraph tags on the Contact page — NOT as mailto: links. Read all visible text carefully.
 
 URLs to visit:
 ${urlList.map((u,i) => `${i+1}. ${u}`).join("\n")}
@@ -436,12 +483,12 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
 {
   "name": "Company name",
   "industry": "Industry or sector",
-  "websiteUrl": "${isWebsite ? rawUrl : ""}",
+  "websiteUrl": "${rawUrl}",
   "quoteAttribution": "Full Name — Title, Company (find owner/CEO/founder from About page, or from blog post bylines — look for authorBar divs, 'By [Name]', 'Written by [Name]' patterns on the Blog/News page)",
   "about": "2-3 sentence company description",
   "services": "Comma-separated list of main services or products",
-  "address": "Full street address (from Contact page or Google Profile)",
-  "phone": "Phone number (from Contact page or Google Profile)",
+  "address": "Full street address (from Contact page only)",
+  "phone": "Phone number (from Contact page only)",
   "email": "Contact email — look for plain text email addresses (e.g. admin@domain.com) in paragraph text on the Contact page. They are usually displayed as visible text, NOT as mailto: links. Also check footer and About page."
 }`;
 
@@ -452,7 +499,7 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
       const parsed  = JSON.parse(jsonStr);
 
       setCrawlPages(allPages.map(p => ({ ...p, status:"ok" })));
-      setCdDraft(prev => ({ ...prev, ...parsed, websiteUrl: isWebsite ? rawUrl : prev.websiteUrl }));
+      setCdDraft(prev => ({ ...prev, ...parsed, websiteUrl: rawUrl }));
       setCdMode("manual");
       showToast("Data extracted — review and save!");
     } catch(e) {
@@ -1333,7 +1380,6 @@ Make it genuinely newsworthy and professionally written.`;
                 <div style={{ display:"flex", gap:".5rem", marginBottom:".85rem", background:"#f1f5f9", borderRadius:".5rem", padding:".25rem" }}>
                   {[
                     { key:"website", label:"🌐 Website URL",      placeholder:"https://yourcompany.com"          },
-                    { key:"google",  label:"📍 Google Profile",   placeholder:"https://share.google/123456"     },
                     { key:"summary", label:"📄 Summary File URL", placeholder:"https://yoursite.com/summary.txt" },
                   ].map(opt => (
                     <button key={opt.key} onClick={()=>{ setCrawlSourceType(opt.key); setAiCrawlUrl(""); setCrawlError(null); }}
@@ -1350,7 +1396,6 @@ Make it genuinely newsworthy and professionally written.`;
                 {/* Dynamic URL input */}
                 {[
                   { key:"website", label:"Website URL",      ph:"https://yourcompany.com"          },
-                  { key:"google",  label:"Google Profile URL",ph:"https://share.google/123456"     },
                   { key:"summary", label:"Summary File URL", ph:"https://yoursite.com/summary.txt" },
                 ].map(opt => crawlSourceType===opt.key && (
                   <div key={opt.key}>
