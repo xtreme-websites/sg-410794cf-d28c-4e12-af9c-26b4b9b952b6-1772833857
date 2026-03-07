@@ -578,42 +578,38 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
       ? `${ind} ${svcs.split(",")[1].trim()}`
       : `${ind} industry trends`;
 
+    const normT = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
+
     const parseXml = (xml) => {
       const doc   = new DOMParser().parseFromString(xml, "text/xml");
       const items = Array.from(doc.querySelectorAll("item")).slice(0, 20);
       const isLowQuality = (title, desc) => {
-        // Filter: description too short (pure SEO filler / no content)
-        if (desc.length < 80) return true;
-        // Filter: title is just 1-2 words (bare keyword, not a headline)
-        const words = title.trim().split(/\s+/);
-        if (words.length < 3) return true;
-        // (3-word titles like "Window Cleaning Tips" are valid — allow them)
+        if (desc.length < 80) return true;           // too short = SEO stub
+        if (title.trim().split(/\s+/).length < 3) return true; // 1-2 word bare keyword
         return false;
       };
-      const normT = (t) => t.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
-      const seenT = new Set();
+      const seen = new Set();
       return items.map(el => {
         const title   = el.querySelector("title")?.textContent?.replace(/\s*-\s*[^-]+$/, "").trim() || "";
         const link    = el.querySelector("link")?.textContent?.trim() || "";
         const pubDate = el.querySelector("pubDate")?.textContent?.trim() || "";
         const source  = el.querySelector("source")?.textContent?.trim() || "";
         const rawDesc = el.querySelector("description")?.textContent?.replace(/<[^>]+>/g,"").trim() || "";
-        // Decode HTML entities (&nbsp; &#160; &amp; etc.)
-        const desc = rawDesc.replace(/&nbsp;/g," ").replace(/&#160;/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#\d+;/g," ").replace(/\s{2,}/g," ").trim();
+        const desc    = rawDesc.replace(/&nbsp;/g," ").replace(/&#160;/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#\d+;/g," ").replace(/\s{2,}/g," ").trim();
         const d       = pubDate ? new Date(pubDate) : null;
-        const date    = d && !isNaN(d)
-          ? `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`
-          : "";
-        return { title, summary: desc.slice(0,286)+"…", source, date, url: link, relevance:"High", _desc: desc };
-      }).filter(t => {
+        const date    = d && !isNaN(d) ? `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}` : "";
+        return { title, desc, summary: desc.slice(0,286)+"…", source, date, url: link, relevance:"High" };
+      })
+      .filter(t => {
         if (!t.title || !t.url) return false;
-        if (isLowQuality(t.title, t._desc)) return false;
+        if (isLowQuality(t.title, t.desc)) return false;
         const key = normT(t.title);
-        if (seenT.has(key)) return false;
-        seenT.add(key);
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
-      }).map(({ _desc, ...t }) => t)
-        .slice(0, 6);
+      })
+      .map(({ desc, ...t }) => t)
+      .slice(0, 6);
     };
 
     const fetchRSS = async (query) => {
@@ -633,7 +629,7 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
     };
 
     // Normalize title for dedup: lowercase, strip punctuation, collapse spaces
-    const normTitle = (t) => t.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+    // (normT is defined above parseXml)
 
     let all = [];
     try {
@@ -646,8 +642,8 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
     try {
       const b2 = await fetchRSS(q2);
       const seenUrls   = new Set(all.map(t => t.url));
-      const seenTitles = new Set(all.map(t => normTitle(t.title)));
-      const fresh = b2.filter(t => !seenUrls.has(t.url) && !seenTitles.has(normTitle(t.title)));
+      const seenTitles = new Set(all.map(t => normT(t.title)));
+      const fresh = b2.filter(t => !seenUrls.has(t.url) && !seenTitles.has(normT(t.title)));
       all = [...all, ...fresh].slice(0, 12);
       setTrendingTopics([...all]);
       setTopicsFetched(all.length);
