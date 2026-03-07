@@ -584,11 +584,14 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
       const isLowQuality = (title, desc) => {
         // Filter: description too short (pure SEO filler / no content)
         if (desc.length < 80) return true;
-        // Filter: title is just 1-3 words (bare keyword, not a headline)
+        // Filter: title is just 1-2 words (bare keyword, not a headline)
         const words = title.trim().split(/\s+/);
         if (words.length < 3) return true;
+        // (3-word titles like "Window Cleaning Tips" are valid — allow them)
         return false;
       };
+      const normT = (t) => t.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
+      const seenT = new Set();
       return items.map(el => {
         const title   = el.querySelector("title")?.textContent?.replace(/\s*-\s*[^-]+$/, "").trim() || "";
         const link    = el.querySelector("link")?.textContent?.trim() || "";
@@ -602,8 +605,14 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
           ? `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`
           : "";
         return { title, summary: desc.slice(0,286)+"…", source, date, url: link, relevance:"High", _desc: desc };
-      }).filter(t => t.title && t.url && !isLowQuality(t.title, t._desc))
-        .map(({ _desc, ...t }) => t)
+      }).filter(t => {
+        if (!t.title || !t.url) return false;
+        if (isLowQuality(t.title, t._desc)) return false;
+        const key = normT(t.title);
+        if (seenT.has(key)) return false;
+        seenT.add(key);
+        return true;
+      }).map(({ _desc, ...t }) => t)
         .slice(0, 6);
     };
 
@@ -623,6 +632,9 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
       } catch(e) { return []; }
     };
 
+    // Normalize title for dedup: lowercase, strip punctuation, collapse spaces
+    const normTitle = (t) => t.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+
     let all = [];
     try {
       const b1 = await fetchRSS(q1);
@@ -633,8 +645,9 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
 
     try {
       const b2 = await fetchRSS(q2);
-      const seen  = new Set(all.map(t => t.url));
-      const fresh = b2.filter(t => !seen.has(t.url));
+      const seenUrls   = new Set(all.map(t => t.url));
+      const seenTitles = new Set(all.map(t => normTitle(t.title)));
+      const fresh = b2.filter(t => !seenUrls.has(t.url) && !seenTitles.has(normTitle(t.title)));
       all = [...all, ...fresh].slice(0, 12);
       setTrendingTopics([...all]);
       setTopicsFetched(all.length);
