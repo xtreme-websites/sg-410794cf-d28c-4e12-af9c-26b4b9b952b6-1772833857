@@ -1,6 +1,28 @@
 import { useState, useMemo, useEffect } from "react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
+// ─── Storage wrapper: window.storage (Claude sandbox) → localStorage (Vercel) ─
+const store = {
+  get: async (key) => {
+    try {
+      if (typeof window.storage?.get === "function") {
+        const r = await window.storage.get(key);
+        return r?.value ?? null;
+      }
+    } catch {}
+    try { return localStorage.getItem(key); } catch {}
+    return null;
+  },
+  set: async (key, value) => {
+    try {
+      if (typeof window.storage?.set === "function") {
+        await window.storage.set(key, value); return;
+      }
+    } catch {}
+    try { localStorage.setItem(key, value); } catch {}
+  },
+};
+
 // ─── Supabase Client (REST API — no library needed) ──────────────────────────
 // ── Stripe Package Config ──────────────────────────────────────────────────
 const PR_PACKAGES = {
@@ -48,8 +70,9 @@ const supabase = {
       return { data, error: res.ok ? null : data };
     },
     upsert: async (row, { onConflict }={}) => {
+      const qs = onConflict ? `?on_conflict=${onConflict}` : "";
       const headers = supabase._headers({ "Prefer": `resolution=merge-duplicates,return=representation` });
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${qs}`, {
         method: "POST",
         headers,
         body: JSON.stringify(row)
@@ -232,11 +255,11 @@ export default function PRDashboard() {
     (async () => {
       // Load Claude API key from local storage
       try {
-        const r = await window.storage.get("mbb:claudeKey");
+        const r = await store.get("mbb:claudeKey");
         if (r?.value) { setClaudeApiKey(r.value); setClaudeKeyDraft(r.value); }
       } catch {}
       try {
-        const r = await window.storage.get("mbb:webhookUrl");
+        const r = await store.get("mbb:webhookUrl");
         if (r?.value) { setWebhookUrl(r.value); setWebhookDraft(r.value); }
       } catch {}
 
@@ -260,12 +283,12 @@ export default function PRDashboard() {
           });
         } else {
           // Fall back to local cache
-          const cached = await window.storage.get("mbb:companyData");
+          const cached = await store.get("mbb:companyData");
           if (cached?.value) setCompanyData(JSON.parse(cached.value));
         }
       } catch {
         try {
-          const cached = await window.storage.get("mbb:companyData");
+          const cached = await store.get("mbb:companyData");
           if (cached?.value) setCompanyData(JSON.parse(cached.value));
         } catch {}
       }
@@ -295,7 +318,7 @@ export default function PRDashboard() {
 
   const saveCompanyData = async (data) => {
     setCompanyData(data);
-    try { await window.storage.set("mbb:companyData", JSON.stringify(data)); } catch {}
+    try { await store.set("mbb:companyData", JSON.stringify(data)); } catch {}
     try {
       await supabase.from("company_profiles").upsert({
         location_id:      locationId,
@@ -1564,7 +1587,7 @@ Make it genuinely newsworthy and professionally written.`;
                 <button onClick={async()=>{
                   const k = claudeKeyDraft.trim();
                   setClaudeApiKey(k);
-                  try { await window.storage.set("mbb:claudeKey", k); } catch {}
+                  try { await store.set("mbb:claudeKey", k); } catch {}
                   showToast(k ? "Claude key saved!" : "Key cleared");
                 }} className="btn-primary" style={{ flexShrink:0, padding:".6rem 1rem" }}>
                   <SaveIcon size={14}/> Save
@@ -1591,7 +1614,7 @@ Make it genuinely newsworthy and professionally written.`;
                 <button onClick={async()=>{
                   const u = webhookDraft.trim();
                   setWebhookUrl(u);
-                  try { await window.storage.set("mbb:webhookUrl", u); } catch {}
+                  try { await store.set("mbb:webhookUrl", u); } catch {}
                   showToast(u ? "Webhook saved!" : "Webhook cleared");
                 }} className="btn-primary" style={{ flexShrink:0, padding:".6rem 1rem" }}>
                   <SaveIcon size={14}/> Save
