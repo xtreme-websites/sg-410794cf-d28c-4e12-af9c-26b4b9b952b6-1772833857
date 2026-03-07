@@ -11,35 +11,51 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== crawl-website-data Edge Function called ===')
+    
     const { websiteUrl } = await req.json()
-
     console.log('Received websiteUrl:', websiteUrl)
 
     if (!websiteUrl) {
-      throw new Error('Website URL is required')
+      console.error('No websiteUrl provided')
+      return new Response(
+        JSON.stringify({ error: 'websiteUrl is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
     }
 
-    const CLAUDE_API_KEY = Deno.env.get('CLAUDE_API_KEY')
+    const claudeApiKey = Deno.env.get('CLAUDE_API_KEY')
+    console.log('Claude API key present:', !!claudeApiKey)
     
-    console.log('CLAUDE_API_KEY exists:', !!CLAUDE_API_KEY)
-    
-    if (!CLAUDE_API_KEY) {
-      throw new Error('CLAUDE_API_KEY not configured in Edge Function secrets')
+    if (!claudeApiKey) {
+      console.error('CLAUDE_API_KEY not found in environment')
+      return new Response(
+        JSON.stringify({ error: 'Claude API key not configured' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
     }
 
-    const prompt = `Analyze the website at ${websiteUrl} and extract the following company information in JSON format:
+    const prompt = `Visit this website: ${websiteUrl}
+
+Extract the following company information and return ONLY a JSON object with these exact fields:
 {
-  "name": "company name",
-  "industry": "primary industry or sector",
-  "about": "brief description of the company (2-3 sentences)",
-  "services": "comma-separated list of main services or products",
-  "address": "physical address if available",
-  "phone": "contact phone number if available",
-  "email": "contact email if available"
+  "name": "Company name",
+  "industry": "Industry or business category",
+  "websiteUrl": "${websiteUrl}",
+  "quoteAttribution": "Full name and title for quotes (e.g., 'John Smith, CEO')",
+  "about": "Detailed company description, mission, and background",
+  "services": "Comma-separated list of all services or products offered",
+  "address": "Full physical address",
+  "phone": "Phone number with country code",
+  "email": "Contact email address"
 }
 
-If any information is not available or cannot be determined, use an empty string for that field.
-Return ONLY the JSON object, no additional text.`
+Important:
+- Return ONLY valid JSON, no markdown or code fences
+- If a field cannot be found, use an empty string ""
+- For services, list ALL services/products as comma-separated values
+- For quoteAttribution, find the CEO, founder, or main spokesperson name and title
+- Be thorough and extract as much detail as possible`
 
     console.log('Calling Claude API...')
 
@@ -47,12 +63,12 @@ Return ONLY the JSON object, no additional text.`
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
+        'x-api-key': claudeApiKey,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1000,
+        max_tokens: 2000,
         messages: [{
           role: 'user',
           content: prompt
@@ -65,32 +81,49 @@ Return ONLY the JSON object, no additional text.`
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Claude API error:', errorText)
-      throw new Error(`Claude API error: ${errorText}`)
+      return new Response(
+        JSON.stringify({ error: `Claude API error: ${response.status}`, details: errorText }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
     }
 
-    const data = await response.json()
+    const claudeData = await response.json()
     console.log('Claude API response received')
-    
-    const text = data.content?.[0]?.text || '{}'
-    
-    // Extract JSON from response (remove markdown code blocks if present)
-    let jsonText = text.trim()
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.slice(7)
-    }
-    if (jsonText.startsWith('```')) {
-      jsonText = jsonText.slice(3)
-    }
-    if (jsonText.endsWith('```')) {
-      jsonText = jsonText.slice(0, -3)
-    }
-    
-    const companyData = JSON.parse(jsonText.trim())
 
-    console.log('Successfully extracted company data')
+    const extractedText = claudeData.content?.[0]?.text || ''
+    console.log('Extracted text length:', extractedText.length)
+    console.log('First 200 chars:', extractedText.substring(0, 200))
 
+    let companyData
+    try {
+      const codeBlockPattern = /```(?:json)?\s*/g
+      const cleanedText = extractedText.replace(codeBlockPattern, '').trim()
+      companyData = JSON.parse(cleanedText)
+      console.log('Successfully parsed company data:', Object.keys(companyData))
+    } catch (parseError) {
+      console.error('Failed to parse Claude response as JSON:', parseError)
+      console.error('Raw text:', extractedText)
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse extracted data', details: extractedText.substring(0, 500) }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+
+    const finalData = {
+      name: companyData.name || '',
+      industry: companyData.industry || '',
+      websiteUrl: websiteUrl,
+      quoteAttribution: companyData.quoteAttribution || '',
+      about: companyData.about || '',
+      services: companyData.services || '',
+      address: companyData.address || '',
+      phone: companyData.phone || '',
+      email: companyData.email || ''
+    }
+
+    console.log('=== Returning final data ===')
     return new Response(
-      JSON.stringify(companyData),
+      JSON.stringify(finalData),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
@@ -98,15 +131,19 @@ Return ONLY the JSON object, no additional text.`
     )
 
   } catch (error) {
-    console.error('Error in crawl-website-data function:', error)
+    console.error('=== UNEXPECTED ERROR ===')
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.toString()
+        error: 'Internal server error', 
+        message: error.message,
+        stack: error.stack 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
+        status: 500 
       }
     )
   }
