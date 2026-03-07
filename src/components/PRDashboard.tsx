@@ -368,6 +368,8 @@ export default function PRDashboard() {
   const [aiCrawlUrl,      setAiCrawlUrl]      = useState("");
   const [crawlSourceType, setCrawlSourceType] = useState("website"); // "website"|"google"|"summary"
   const [isCrawling,      setIsCrawling]      = useState(false);
+  const [enhancingAbout,  setEnhancingAbout]  = useState(false);
+  const [enhancingQuote,  setEnhancingQuote]  = useState(false);
   const [crawlError,      setCrawlError]      = useState(null);
   const [crawlStatus,     setCrawlStatus]     = useState("");
   const [crawlPages,      setCrawlPages]      = useState([]);
@@ -1299,11 +1301,41 @@ Make it genuinely newsworthy and professionally written.`;
                     <KeywordTagInput keywords={prFormData.keywords} onChange={kw=>setPrFormData(p=>({...p,keywords:kw}))} maxKeywords={2}/>
                   </div>
                   <div>
-                    <label className="field-label">What is the Press Release About? <span style={{ color:"#ef4444" }}>*</span></label>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".35rem" }}>
+                      <label className="field-label" style={{ margin:0 }}>What is the Press Release About? <span style={{ color:"#ef4444" }}>*</span></label>
+                      <button type="button" disabled={enhancingAbout || !prFormData.about.trim()} onClick={async () => {
+                        setEnhancingAbout(true);
+                        try {
+                          const result = await ai(
+                            `Rewrite the following press release topic/description to be professional, clear, and compelling. Fix grammar, improve structure, expand if too short (aim for 3-5 sentences), and make it suitable for a press release. Return ONLY the improved text, no commentary:\n\n${prFormData.about}`,
+                            "You are a professional PR copywriter. Return only the improved text."
+                          );
+                          setPrFormData(p => ({ ...p, about: result.trim() }));
+                        } catch { showToast("Enhancement failed — check API key", "error"); }
+                        setEnhancingAbout(false);
+                      }} style={{ display:"flex", alignItems:"center", gap:".3rem", background:"none", border:"1px solid #c7d2fe", borderRadius:".4rem", padding:".2rem .55rem", fontSize:".72rem", fontWeight:600, color: enhancingAbout || !prFormData.about.trim() ? "#a5b4fc" : "#4f46e5", cursor: enhancingAbout || !prFormData.about.trim() ? "not-allowed" : "pointer", transition:"all .15s", whiteSpace:"nowrap" }}>
+                        {enhancingAbout ? <><LoaderIcon size={11}/> Enhancing…</> : <>✨ Enhance with AI</>}
+                      </button>
+                    </div>
                     <textarea value={prFormData.about} onChange={e=>setPrFormData(p=>({...p,about:e.target.value}))} placeholder="Describe the news, announcement, or story in detail..." className="field-input" style={{ height:"150px", resize:"vertical", lineHeight:1.6 }}/>
                   </div>
                   <div>
-                    <label className="field-label">Key Quote <span style={{ color:"#ef4444" }}>*</span></label>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".35rem" }}>
+                      <label className="field-label" style={{ margin:0 }}>Executive's Quote <span style={{ color:"#ef4444" }}>*</span></label>
+                      <button type="button" disabled={enhancingQuote || !prFormData.quote.trim()} onClick={async () => {
+                        setEnhancingQuote(true);
+                        try {
+                          const result = await ai(
+                            `Rewrite the following executive quote to sound polished, authoritative, and press-release-ready. Fix grammar, improve vocabulary, make it confident and quotable (1-3 sentences). Return ONLY the improved quote text, no attribution, no quotation marks, no commentary:\n\n${prFormData.quote}`,
+                            "You are a professional PR copywriter. Return only the improved quote text."
+                          );
+                          setPrFormData(p => ({ ...p, quote: result.trim().replace(/^[""]|[""]$/g, "") }));
+                        } catch { showToast("Enhancement failed — check API key", "error"); }
+                        setEnhancingQuote(false);
+                      }} style={{ display:"flex", alignItems:"center", gap:".3rem", background:"none", border:"1px solid #c7d2fe", borderRadius:".4rem", padding:".2rem .55rem", fontSize:".72rem", fontWeight:600, color: enhancingQuote || !prFormData.quote.trim() ? "#a5b4fc" : "#4f46e5", cursor: enhancingQuote || !prFormData.quote.trim() ? "not-allowed" : "pointer", transition:"all .15s", whiteSpace:"nowrap" }}>
+                        {enhancingQuote ? <><LoaderIcon size={11}/> Enhancing…</> : <>✨ Enhance with AI</>}
+                      </button>
+                    </div>
                     <textarea value={prFormData.quote} onChange={e=>setPrFormData(p=>({...p,quote:e.target.value}))} placeholder="Enter a compelling quote from a company spokesperson..." className="field-input" style={{ height:"80px", resize:"vertical", lineHeight:1.6 }}/>
                   </div>
                   <details>
