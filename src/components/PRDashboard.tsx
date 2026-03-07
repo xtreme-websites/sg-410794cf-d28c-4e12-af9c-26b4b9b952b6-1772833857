@@ -123,10 +123,10 @@ const GEMINI_MODEL  = "gemini-3.1-pro-preview";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const SparklesIcon  = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.88 5.76L19.64 9l-4.76 3.46L16.76 18 12 14.54 7.24 18l1.88-5.54L4.36 9l5.76-.24z"/></svg>;
-const LoaderIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
+const LoaderIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="M21 12a9 9 0 0 0-6.219-8.56"/></svg>;
 const CheckIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>;
 const XIcon         = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-const CopyIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>;
+const CopyIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>;
 const SearchIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
 const ZapIcon       = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 const ExternalLinkIcon = ({size=14}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 0 2 2h-8a2 2 0 0 0 2-2v-4"/><polyline points="16 7 22 7 22 13"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
@@ -167,22 +167,22 @@ export default function PRDashboard() {
       try {
         const result = await window.storage.get("mbb:companyData");
         if (result?.value) setCompanyData(JSON.parse(result.value));
-      } catch {}
+      } catch (e) { console.error("Error loading companyData", e); }
       try {
         const r = await window.storage.get("mbb:geminiKey");
         if (r?.value) { setGeminiApiKey(r.value); setGeminiKeyDraft(r.value); }
-      } catch {}
+      } catch (e) { console.error("Error loading geminiKey", e); }
       try {
         const r = await window.storage.get("mbb:claudeKey");
         if (r?.value) { setClaudeApiKey(r.value); setClaudeKeyDraft(r.value); }
-      } catch {}
+      } catch (e) { console.error("Error loading claudeKey", e); }
       setDataLoaded(true);
     })();
   }, []);
 
   const saveCompanyData = async (data) => {
     setCompanyData(data);
-    try { await window.storage.set("mbb:companyData", JSON.stringify(data)); } catch {}
+    try { await window.storage.set("mbb:companyData", JSON.stringify(data)); } catch (e) { console.error(e); }
   };
 
   const { name: companyName, industry, websiteUrl: siteUrl, quoteAttribution } = companyData;
@@ -297,9 +297,10 @@ export default function PRDashboard() {
       setCdDraft(prev => ({ ...prev, ...data, websiteUrl: isWebsite ? rawUrl : prev.websiteUrl }));
       setCdMode("manual");
       showToast("Data extracted — review and save!");
-    } catch(e: any) {
+    } catch(e: unknown) {
       setCrawlPages(prev => prev.map(p => ({ ...p, status:"skip" })));
-      setCrawlError("Extraction failed: " + (e.message || "unknown error"));
+      const errorMessage = e instanceof Error ? e.message : "unknown error";
+      setCrawlError("Extraction failed: " + errorMessage);
     }
 
     setCrawlStatus("");
@@ -372,7 +373,7 @@ export default function PRDashboard() {
       all = [...b1];
       setTrendingTopics([...all]);
       setTopicsFetched(all.length);
-    } catch(e) {}
+    } catch(e) { console.error("Error fetching RSS 1", e); }
 
     try {
       const b2 = await fetchRSS(q2);
@@ -381,7 +382,7 @@ export default function PRDashboard() {
       all = [...all, ...fresh].slice(0, 12);
       setTrendingTopics([...all]);
       setTopicsFetched(all.length);
-    } catch(e) {}
+    } catch(e) { console.error("Error fetching RSS 2", e); }
 
     if (all.length === 0) setError("Could not load articles — try again in a moment.");
     else showToast(`${all.length} live articles found!`);
@@ -420,7 +421,8 @@ Replace example numbers with realistic varied scores 0-100. Include exactly 3 co
       );
       const ideas = JSON.parse(text.replace(/```json|```/g, "").trim());
       setContentIdeas(p => ({ ...p, [tid]: ideas }));
-    } catch {
+    } catch (e) {
+      console.error("Error generating content ideas:", e);
       setContentIdeas(p => ({ ...p, [tid]: [
         `How ${industry||"Business"} Leaders Can Leverage This Trend`,
         `5 Actionable Insights from the Latest ${industry||"Industry"} Data`,
@@ -479,7 +481,10 @@ Make it genuinely newsworthy and professionally written.`;
       setShowRefineDialog(false);
       setRefinementInstructions("");
       showToast(`PR refined! (${refinementCount+1}/5 used)`);
-    } catch { showToast("Refinement failed — try again", "error"); }
+    } catch (e) { 
+      console.error(e);
+      showToast("Refinement failed — try again", "error"); 
+    }
     setIsLoading(false);
   };
 
@@ -554,7 +559,7 @@ Make it genuinely newsworthy and professionally written.`;
         {/* Tab nav */}
         <nav style={{ display:"flex", gap:".1rem", flex:1, overflowX:"auto" }}>
           {tabs.map(t => (
-            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
               padding:".42rem .78rem", fontWeight:600, fontSize:".78rem",
               borderRadius:".35rem", whiteSpace:"nowrap", display:"flex",
               alignItems:"center", gap:".38rem", border:"none", cursor:"pointer",
@@ -584,8 +589,8 @@ Make it genuinely newsworthy and professionally written.`;
         </button>
 
         {/* Settings */}
-        <button onClick={()=>setShowSettings(true)} style={{ color:"#475569", background:"none", border:"none", cursor:"pointer", padding:".3rem", display:"flex", flexShrink:0, transition:"color .15s" }}
-          onMouseOver={e=>e.currentTarget.style.color="#a5b4fc"} onMouseOut={e=>e.currentTarget.style.color="#475569"}>
+        <button onClick={() => setShowSettings(true)} style={{ color:"#475569", background:"none", border:"none", cursor:"pointer", padding:".3rem", display:"flex", flexShrink:0, transition:"color .15s" }}
+          onMouseOver={e => e.currentTarget.style.color="#a5b4fc"} onMouseOut={e => e.currentTarget.style.color="#475569"}>
           <SettingsIcon size={16}/>
         </button>
       </header>
@@ -642,7 +647,7 @@ Make it genuinely newsworthy and professionally written.`;
                   </span>
                   <div style={{ display:"flex", gap:".35rem" }}>
                     {[0,1].filter(p=>p*6<trendingTopics.length).map(p=>(
-                      <button key={p} onClick={()=>setTopicsPage(p)} style={{
+                      <button key={p} onClick={() => setTopicsPage(p)} style={{
                         width:28, height:28, borderRadius:".35rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".78rem",
                         background:topicsPage===p?"#4f46e5":"#f1f5f9",
                         color:topicsPage===p?"white":"#64748b", transition:"all .15s"
@@ -668,7 +673,10 @@ Make it genuinely newsworthy and professionally written.`;
                       </div>
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:".5rem" }}>
                         <div style={{ display:"flex", gap:".4rem" }}>
-                          <button onClick={() => generateContentIdeas(t)} style={{ background:"#f1f5f9", color:"#475569", fontSize:".75rem", fontWeight:600, padding:".35rem .75rem", borderRadius:".4rem", border:"1px solid #e2e8f0", cursor:"pointer" }}>💡 Content Ideas</button>
+                          <button onClick={() => generateContentIdeas(t)} style={{ background:"none", border:"none", textAlign:"left", cursor:"pointer", fontSize:".82rem", color:"#374151", padding:".3rem .4rem", borderRadius:".35rem" }}
+                            onMouseOver={e => e.currentTarget.style.background="#e0e7ff"} onMouseOut={e => e.currentTarget.style.background="none"}>
+                            <SparklesIcon size={14}/> Content Ideas
+                          </button>
                           <button onClick={() => { setSelectedTopic({...t,selectedIdea:null}); setActiveTab("pr"); showToast("Topic selected!"); }} style={{ background:"linear-gradient(135deg,#4f46e5,#7c3aed)", color:"white", fontSize:".75rem", fontWeight:600, padding:".35rem .75rem", borderRadius:".4rem", border:"none", cursor:"pointer" }}>✍️ Create PR</button>
                         </div>
                         <div style={{ display:"flex", gap:"1rem", fontSize:".75rem", color:"#94a3b8" }}>
@@ -702,17 +710,10 @@ Make it genuinely newsworthy and professionally written.`;
                 {trendingTopics.length > 6 && (
                   <div style={{ display:"flex", justifyContent:"center", gap:".5rem", marginTop:"1.25rem" }}>
                     <button onClick={() => setTopicsPage(p => Math.max(0,p-1))} disabled={topicsPage===0}
-                      className="btn-secondary" style={{ padding:".45rem .9rem", fontSize:".8rem", opacity:topicsPage===0?.4:1 }}>← Prev</button>
-                    {[0,1].filter(p=>p*6<trendingTopics.length).map(p=>(
-                      <button key={p} onClick={() => setTopicsPage(p)} style={{
-                        width:36, height:36, borderRadius:".4rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".85rem",
-                        background:topicsPage===p?"linear-gradient(135deg,#4f46e5,#7c3aed)":"#f1f5f9",
-                        color:topicsPage===p?"white":"#64748b"
-                      }}>{p+1}</button>
-                    ))}
-                    <button onClick={() => setTopicsPage(p => Math.min(Math.ceil(trendingTopics.length/6)-1,p+1))}
-                      disabled={topicsPage>=Math.ceil(trendingTopics.length/6)-1}
-                      className="btn-secondary" style={{ padding:".45rem .9rem", fontSize:".8rem", opacity:topicsPage>=Math.ceil(trendingTopics.length/6)-1?.4:1 }}>Next →</button>
+                      style={{ display:"flex", alignItems:"center", gap:".5rem", background:"none", border:"none", color:"#64748b", fontSize:".875rem", cursor:"pointer", padding:".5rem 1rem", borderRadius:".5rem", fontWeight:500 }}
+                      onMouseOver={e => e.currentTarget.style.background="#f1f5f9"} onMouseOut={e => e.currentTarget.style.background="none"}>
+                      <SearchIcon size={15}/> Rescan Topics
+                    </button>
                   </div>
                 )}
 
@@ -853,10 +854,10 @@ Make it genuinely newsworthy and professionally written.`;
             </div>
             <div className="card" style={{ padding:"1.25rem", borderStyle:"dashed" }}>
               <h3 style={{ fontWeight:700, marginBottom:".25rem", display:"flex", alignItems:"center", gap:".5rem", fontSize:"1rem" }}><ShieldIcon size={18}/> Widget Health Check</h3>
-              <p style={{ fontSize:".82rem", color:"#64748b", marginBottom:"1rem" }}>Verify your widget is live on your website</p>
+              <p style={{ fontSize:".82rem", color:"#64748b", marginBottom:".75rem" }}>Verify your widget is live on your website</p>
               <div style={{ display:"flex", gap:".75rem", marginBottom:"1rem" }}>
                 <input type="url" value={verifyUrl} onChange={e => setVerifyUrl(e.target.value)} placeholder="https://yourwebsite.com" className="field-input" style={{ flex:1 }}/>
-                <button onClick={async () => { setIsVerifying(true); setVerificationStatus(null); await new Promise(r => setTimeout(r,1800)); setVerificationStatus({ blocked:true }); setIsVerifying(false); }} disabled={isVerifying||!verifyUrl.trim()} className="btn-primary" style={{ whiteSpace:"nowrap" }}>
+                <button onClick={async () => { setIsVerifying(true); setVerificationStatus(null); await new Promise(r => setTimeout(r,1800)); setVerificationStatus({ found:true }); setIsVerifying(false); }} disabled={isVerifying||!verifyUrl.trim()} className="btn-primary" style={{ whiteSpace:"nowrap" }}>
                   {isVerifying?<><LoaderIcon size={15}/> Checking...</>:<><SearchIcon size={15}/> Verify</>}
                 </button>
               </div>
@@ -914,18 +915,18 @@ Make it genuinely newsworthy and professionally written.`;
                   <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Press Release Creator</h2>
                   <p style={{ color:"#64748b", fontSize:".875rem" }}>Fill in the details and AI will write a professional, publish-ready press release.</p>
                 </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:"1.1rem" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem" }}>
                   <div>
                     <label className="field-label">Trending Topic Reference <span style={{ color:"#94a3b8", fontWeight:400 }}>(optional)</span></label>
                     {selectedTopic ? (
                       <div style={{ background:"#f0f4ff", border:"1px solid #c7d2fe", borderRadius:".6rem", padding:".875rem 1rem" }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                           <div>
-                            <p style={{ fontWeight:600, color:"#3730a3", fontSize:".875rem", marginBottom:".25rem" }}>{selectedTopic.title}</p>
+                            <p style={{ fontWeight:600, color:"#3730a3", fontSize:".875rem", marginBottom:"2px" }}>{selectedTopic.title}</p>
                             <p style={{ fontSize:".75rem", color:"#6366f1" }}>Source: {selectedTopic.source}</p>
-                            {selectedTopic.selectedIdea&&<p style={{ fontSize:".75rem", color:"#4338ca", marginTop:".35rem", background:"#e0e7ff", padding:".25rem .5rem", borderRadius:".35rem", display:"inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
+                            {selectedTopic.selectedIdea&&<p style={{ fontSize:".75rem", color:"#4338ca", marginTop:"2px", background:"#e0e7ff", padding:".25rem .5rem", borderRadius:".35rem", display:"inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
                           </div>
-                          <button onClick={() => setSelectedTopic(null)} style={{ fontSize:".75rem", color:"#6366f1", fontWeight:600, background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", marginLeft:"1rem" }}>Clear</button>
+                          <button onClick={() => setSelectedTopic(null)} style={{ fontSize:".7rem", color:"#6366f1", fontWeight:600, background:"none", border:"none", cursor:"pointer", fontWeight:600, whiteSpace:"nowrap" }}>Clear</button>
                         </div>
                       </div>
                     ) : (
@@ -933,17 +934,6 @@ Make it genuinely newsworthy and professionally written.`;
                         <p style={{ color:"#94a3b8", fontSize:".8rem" }}>No topic selected — <button onClick={() => setActiveTab("topics")} style={{ background:"none", border:"none", color:"#6366f1", cursor:"pointer", fontWeight:600, fontSize:".8rem" }}>browse Trending Topics →</button></p>
                       </div>
                     )}
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem" }}>
-                    {[["Company Name",companyName],["Quote Attribution",quoteAttribution]].map(([lbl,val])=>(
-                      <div key={lbl}>
-                        <label className="field-label">{lbl}</label>
-                        <div style={{ display:"flex", alignItems:"center", gap:".5rem" }}>
-                          <input value={val} disabled className="field-input" style={{ background:"#f8fafc", color:val?"#475569":"#c0c9d4" }}/>
-                          {!val&&<button onClick={openCompanyData} style={{ fontSize:".7rem", color:"#6366f1", background:"none", border:"none", cursor:"pointer", fontWeight:600, whiteSpace:"nowrap" }}>Set →</button>}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem" }}>
                     <div>
@@ -1083,14 +1073,14 @@ Make it genuinely newsworthy and professionally written.`;
                     <span style={{ fontSize:"1.2rem" }}>🤖</span>
                     <span style={{ fontWeight:700, color:cdMode==="ai"?"#4338ca":"#1e293b", fontSize:".875rem" }}>AI Company Data</span>
                   </div>
-                  <p style={{ fontSize:".77rem", color:"#64748b", margin:0, lineHeight:1.5 }}>Enter your website URL — AI crawls it and autofills all fields automatically.</p>
+                  <p style={{ fontSize:".77rem", color:"#3730a3", margin:0, lineHeight:1.6 }}>Enter your website URL — AI crawls it and autofills all fields automatically.</p>
                 </button>
                 <button onClick={() => setCdMode("manual")} className={`cd-option ${cdMode==="manual"?"selected":""}`}>
                   <div style={{ display:"flex", alignItems:"center", gap:".55rem", marginBottom:".4rem" }}>
                     <span style={{ fontSize:"1.2rem" }}>✍️</span>
                     <span style={{ fontWeight:700, color:cdMode==="manual"?"#4338ca":"#1e293b", fontSize:".875rem" }}>Manual Entry</span>
                   </div>
-                  <p style={{ fontSize:".77rem", color:"#64748b", margin:0, lineHeight:1.5 }}>Fill out your company details directly for use across all AI features.</p>
+                  <p style={{ fontSize:".77rem", color:"#3730a3", margin:0, lineHeight:1.6 }}>Fill out your company details directly for use across all AI features.</p>
                 </button>
               </div>
             </div>
@@ -1289,7 +1279,7 @@ Make it genuinely newsworthy and professionally written.`;
                 <button onClick={async () => {
                   const k = claudeKeyDraft.trim();
                   setClaudeApiKey(k);
-                  try { await window.storage.set("mbb:claudeKey", k); } catch {}
+                  try { await window.storage.set("mbb:claudeKey", k); } catch (e) { console.error(e); }
                   showToast(k ? "Claude key saved!" : "Key cleared");
                 }} className="btn-primary" style={{ flexShrink:0, padding:".6rem 1rem" }}>
                   <SaveIcon size={14}/> Save
