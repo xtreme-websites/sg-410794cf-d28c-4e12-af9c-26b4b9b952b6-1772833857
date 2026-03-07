@@ -632,7 +632,7 @@ export default function PRDashboard() {
     { id: 'trending', label: 'Trending Topics', icon: TrendingUp },
     { id: 'competitor', label: 'Competitor Analysis', icon: BarChart3 },
     { id: 'generator', label: 'Press Release Generator', icon: FileText },
-    { id: 'audit', label: 'Media Presence Audit', icon: Search },
+    { id: 'orders', label: 'PR Orders', icon: ShoppingCart },
   ];
 
   const analyzeTrending = async () => {
