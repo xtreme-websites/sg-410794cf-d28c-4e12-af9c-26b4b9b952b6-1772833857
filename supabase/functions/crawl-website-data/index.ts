@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,17 +25,26 @@ serve(async (req) => {
       )
     }
 
-    const claudeApiKey = Deno.env.get('CLAUDE_API_KEY')
-    console.log('Claude API key present:', !!claudeApiKey)
+    // Get Supabase credentials from environment
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
     
-    if (!claudeApiKey) {
-      console.error('CLAUDE_API_KEY not found in environment')
+    console.log('Supabase URL present:', !!supabaseUrl)
+    console.log('Supabase Anon Key present:', !!supabaseAnonKey)
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase credentials not found in environment')
       return new Response(
-        JSON.stringify({ error: 'Claude API key not configured' }),
+        JSON.stringify({ error: 'Supabase not configured' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
 
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    console.log('Supabase client created')
+
+    // Create prompt for Claude
     const prompt = `Visit this website: ${websiteUrl}
 
 Extract the following company information and return ONLY a JSON object with these exact fields:
@@ -57,45 +67,35 @@ Important:
 - For quoteAttribution, find the CEO, founder, or main spokesperson name and title
 - Be thorough and extract as much detail as possible`
 
-    console.log('Calling Claude API...')
+    console.log('Calling call-claude-api Edge Function...')
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': claudeApiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      })
+    // Call the call-claude-api Edge Function
+    const { data: claudeResponse, error: claudeError } = await supabase.functions.invoke('call-claude-api', {
+      body: {
+        prompt: prompt,
+        maxTokens: 2000,
+        model: 'claude-3-5-sonnet-20241022'
+      }
     })
 
-    console.log('Claude API response status:', response.status)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Claude API error:', errorText)
+    if (claudeError) {
+      console.error('Error calling call-claude-api:', claudeError)
       return new Response(
-        JSON.stringify({ error: `Claude API error: ${response.status}`, details: errorText }),
+        JSON.stringify({ error: 'Failed to call Claude API', details: claudeError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
 
-    const claudeData = await response.json()
     console.log('Claude API response received')
+    console.log('Response:', JSON.stringify(claudeResponse).substring(0, 200))
 
-    const extractedText = claudeData.content?.[0]?.text || ''
+    const extractedText = claudeResponse.result || ''
     console.log('Extracted text length:', extractedText.length)
     console.log('First 200 chars:', extractedText.substring(0, 200))
 
     let companyData
     try {
+      // Remove markdown code fences if present
       const codeBlockPattern = /```(?:json)?\s*/g
       const cleanedText = extractedText.replace(codeBlockPattern, '').trim()
       companyData = JSON.parse(cleanedText)
@@ -109,6 +109,7 @@ Important:
       )
     }
 
+    // Ensure all required fields are present with correct structure
     const finalData = {
       name: companyData.name || '',
       industry: companyData.industry || '',
@@ -122,6 +123,8 @@ Important:
     }
 
     console.log('=== Returning final data ===')
+    console.log('Final data keys:', Object.keys(finalData))
+    
     return new Response(
       JSON.stringify(finalData),
       { 
