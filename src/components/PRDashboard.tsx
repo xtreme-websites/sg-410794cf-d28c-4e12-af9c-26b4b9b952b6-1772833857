@@ -573,10 +573,14 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
     setTopicsPage(0);
     setTopicsFetched(0);
 
-    const q1 = svcs ? `${ind} ${svcs.split(",")[0].trim()}` : `${ind} news`;
-    const q2 = svcs && svcs.split(",").length > 1
-      ? `${ind} ${svcs.split(",")[1].trim()}`
-      : `${ind} industry trends`;
+    const svcList = svcs ? svcs.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+    // Priority queue: 2 industry-level queries first, then each service individually
+    const queries = [
+      `${ind} news`,
+      `${ind} industry trends`,
+      ...svcList.map(s => `${s} news`),
+    ];
 
     const normT = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
 
@@ -628,26 +632,24 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
       } catch(e) { return []; }
     };
 
-    // Normalize title for dedup: lowercase, strip punctuation, collapse spaces
-    // (normT is defined above parseXml)
-
+    // Waterfall: run queries in order, stop as soon as we reach 12 unique articles
     let all = [];
-    try {
-      const b1 = await fetchRSS(q1);
-      all = [...b1];
-      setTrendingTopics([...all]);
-      setTopicsFetched(all.length);
-    } catch(e) {}
+    const seenUrls   = new Set();
+    const seenTitles = new Set();
 
-    try {
-      const b2 = await fetchRSS(q2);
-      const seenUrls   = new Set(all.map(t => t.url));
-      const seenTitles = new Set(all.map(t => normT(t.title)));
-      const fresh = b2.filter(t => !seenUrls.has(t.url) && !seenTitles.has(normT(t.title)));
-      all = [...all, ...fresh].slice(0, 12);
-      setTrendingTopics([...all]);
-      setTopicsFetched(all.length);
-    } catch(e) {}
+    for (const query of queries) {
+      if (all.length >= 12) break;
+      try {
+        const batch = await fetchRSS(query);
+        const fresh = batch.filter(t => !seenUrls.has(t.url) && !seenTitles.has(normT(t.title)));
+        fresh.forEach(t => { seenUrls.add(t.url); seenTitles.add(normT(t.title)); });
+        all = [...all, ...fresh].slice(0, 12);
+        if (all.length > 0) {
+          setTrendingTopics([...all]);
+          setTopicsFetched(all.length);
+        }
+      } catch(e) {}
+    }
 
     if (all.length === 0) setError("Could not load articles — try again in a moment.");
     else showToast(`${all.length} live articles found!`);
