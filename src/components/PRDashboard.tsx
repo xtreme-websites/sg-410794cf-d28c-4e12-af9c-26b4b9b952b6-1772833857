@@ -550,29 +550,19 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
     };
 
     const fetchRSS = async (query) => {
-      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-      const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-        `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
-        `https://thingproxy.freeboard.io/fetch/${rssUrl}`,
-      ];
-      for (const proxyUrl of proxies) {
-        try {
-          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-          if (!res.ok) continue;
-          let xml;
-          if (proxyUrl.includes("allorigins")) {
-            const json = await res.json();
-            xml = json.contents;
-          } else {
-            xml = await res.text();
-          }
-          if (!xml || xml.length < 100) continue;
-          const results = parseXml(xml);
-          if (results.length > 0) return results;
-        } catch(e) { continue; }
-      }
-      return [];
+      try {
+        const res = await fetch("https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/rss-fetch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (data.error || !data.xml || data.xml.length < 100) return [];
+        const results = parseXml(data.xml);
+        return results;
+      } catch(e) { return []; }
     };
 
     let all = [];
