@@ -580,16 +580,13 @@ Extract and return ONLY this JSON (empty string "" for anything not found — ne
 
     const parseXml = (xml) => {
       const doc   = new DOMParser().parseFromString(xml, "text/xml");
-      const items = Array.from(doc.querySelectorAll("item")).slice(0, 10);
+      const items = Array.from(doc.querySelectorAll("item")).slice(0, 20);
       const isLowQuality = (title, desc) => {
-        // Filter: description too short (pure SEO filler)
-        if (desc.length < 120) return true;
-        // Filter: title is just a keyword phrase (no verb indicators, very few words)
+        // Filter: description too short (pure SEO filler / no content)
+        if (desc.length < 80) return true;
+        // Filter: title is just 1-3 words (bare keyword, not a headline)
         const words = title.trim().split(/\s+/);
-        if (words.length < 4) return true;
-        // Filter: title has no common article/sentence words (reads like a keyword string)
-        const sentenceWords = /\b(the|a|an|is|are|was|were|has|have|how|why|what|when|who|will|can|could|should|would|new|top|best|why|for|with|your|their|its|our|that|this|these|those)\b/i;
-        if (!sentenceWords.test(title)) return true;
+        if (words.length < 3) return true;
         return false;
       };
       return items.map(el => {
