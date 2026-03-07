@@ -1,1481 +1,1360 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, AlertCircle, CheckCircle2, TrendingUp, Target, Users, Calendar, DollarSign, BarChart3, Settings, Sparkles, RefreshCw, Info, Download, Copy, ExternalLink, Eye, EyeOff, Globe, Building2, Mail, Phone, MapPin, Briefcase } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import KeywordTagInput from "./KeywordTagInput";
-import CompanyDataModal from "./CompanyDataModal";
+import { useState, useMemo, useEffect } from "react";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-// Types
-interface CompanyData {
-  name: string;
-  industry: string;
-  website: string;
-  description: string;
-  contact_email: string;
-  contact_phone: string;
-  address: string;
-  founded_year: string;
-}
+// ─── Global Styles ───────────────────────────────────────────────────────────
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+    *, *::before, *::after { box-sizing: border-box; }
+    .mbb-root { font-family: 'DM Sans', sans-serif; }
+    .font-display, .mbb-root h1, .mbb-root h2, .mbb-root h3 { font-family: 'Outfit', sans-serif; }
+    .mbb-root .prose h1 { font-size:1.5rem; font-weight:700; margin-bottom:.75rem; line-height:1.3; font-family:'Outfit',sans-serif; }
+    .mbb-root .prose h2 { font-size:1.1rem; font-weight:700; margin-top:1.5rem; margin-bottom:.5rem; color:#1e293b; }
+    .mbb-root .prose p  { margin-bottom:.75rem; line-height:1.7; color:#374151; }
+    .mbb-root .prose em { font-style:italic; }
+    .mbb-root .prose strong { font-weight:600; }
+    .mbb-root .prose a  { color:#4f46e5; text-decoration:underline; }
+    .card { background:white; border-radius:.875rem; box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid #f1f5f9; }
+    .btn-primary { background:linear-gradient(135deg,#4f46e5,#7c3aed); color:white; font-weight:600; padding:.6rem 1.2rem; border-radius:.5rem; display:inline-flex; align-items:center; gap:.45rem; transition:all .2s; font-size:.875rem; border:none; cursor:pointer; }
+    .btn-primary:hover:not(:disabled) { background:linear-gradient(135deg,#4338ca,#6d28d9); transform:translateY(-1px); box-shadow:0 4px 14px rgba(79,70,229,.35); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+    .btn-secondary { background:#f1f5f9; color:#475569; font-weight:600; padding:.6rem 1.2rem; border-radius:.5rem; display:inline-flex; align-items:center; gap:.45rem; transition:all .15s; font-size:.875rem; border:1px solid #e2e8f0; cursor:pointer; }
+    .btn-secondary:hover { background:#e2e8f0; }
+    .field-input { width:100%; border:1px solid #e2e8f0; border-radius:.5rem; padding:.6rem .75rem; font-size:.875rem; outline:none; font-family:'DM Sans',sans-serif; transition:border-color .15s; background:white; }
+    .field-input:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.1); }
+    .field-label { display:block; font-size:.78rem; font-weight:600; color:#374151; margin-bottom:.4rem; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .animate-spin { animation:spin .8s linear infinite; }
+    .animate-fadein { animation:fadeSlideIn .35s ease both; }
+    .modal-backdrop { animation: fadeIn .2s ease; }
+    .modal-panel { animation: slideUp .25s ease; }
+    .topic-card { background:white; border-radius:.75rem; border:1px solid #e8edf5; padding:1.25rem; transition:all .2s; }
+    .topic-card:hover { border-color:#c7d2fe; box-shadow:0 4px 16px rgba(99,102,241,.1); transform:translateY(-1px); }
+    .cd-option { border:2px solid #e2e8f0; border-radius:.875rem; padding:1.1rem 1.25rem; cursor:pointer; transition:all .2s; text-align:left; background:white; width:100%; }
+    .cd-option:hover { border-color:#a5b4fc; background:#fafbff; }
+    .cd-option.selected { border-color:#6366f1; background:#f0f4ff; }
+  `}</style>
+);
 
-interface CompetitorData {
-  name: string;
-  strengths: string[];
-  weaknesses: string[];
-  market_share: number;
-}
-
-interface AnalysisResult {
-  market_position: string;
-  competitive_advantages: string[];
-  recommendations: string[];
-  overall_score: number;
-}
-
-interface CompetitorAnalysis {
-  id: string;
-  created_at: string;
-  company_name: string;
-  industry: string;
-  competitors: CompetitorData[];
-  analysis: AnalysisResult;
-}
-
-interface TrendingTopic {
-  topic: string;
-  relevance_score: number;
-  why_relevant: string;
-  potential_angles: string[];
-}
-
-interface MediaPresence {
-  platform: string;
-  presence_score: number;
-  findings: string[];
-  recommendations: string[];
-}
-
-// API Configuration
-const CLAUDE_API_KEY_STORAGE = 'claude_api_key';
-
-const callClaude = async (systemPrompt: string, userPrompt: string, apiKey?: string): Promise<string> => {
-  const key = apiKey || localStorage.getItem(CLAUDE_API_KEY_STORAGE);
-  
-  if (!key) {
-    throw new Error('Claude API key not configured. Please add your API key in Settings.');
-  }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 8096,
-      system: systemPrompt,
-      messages: [{
-        role: 'user',
-        content: userPrompt
-      }]
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Claude API request failed');
-  }
-
-  const data = await response.json();
-  return data.content[0].text;
-};
-
-const callGemini = async (prompt: string): Promise<string> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured');
-  }
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('Gemini API request failed');
-  }
-
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
-};
-
-// Helper functions for AI calls
-const ai = (systemPrompt: string, userPrompt: string, apiKey?: string) => 
-  callClaude(systemPrompt, userPrompt, apiKey);
-
-const aiW = (prompt: string) => callGemini(prompt);
-
-const PRDashboard = () => {
-  // State management
-  const [activeTab, setActiveTab] = useState("generate");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  
-  // Company data state
-  const [companyData, setCompanyData] = useState<CompanyData>({
-    name: "",
-    industry: "",
-    website: "",
-    description: "",
-    contact_email: "",
-    contact_phone: "",
-    address: "",
-    founded_year: ""
-  });
-  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
-
-  // PR Generation state
-  const [prTitle, prSetTitle] = useState("");
-  const [prProductName, prSetProductName] = useState("");
-  const [prKeyFeatures, prSetKeyFeatures] = useState<string[]>([]);
-  const [prTargetAudience, prSetTargetAudience] = useState("");
-  const [prLaunchDate, prSetLaunchDate] = useState("");
-  const [prQuote, prSetQuote] = useState("");
-  const [prAdditionalInfo, prSetAdditionalInfo] = useState("");
-  const [prPackage, prSetPackage] = useState<"starter" | "standard" | "premium">("standard");
-  const [generatedPR, setGeneratedPR] = useState("");
-  
-  // Refinement state
-  const [originalPR, setOriginalPR] = useState("");
-  const [refinementInstructions, setRefinementInstructions] = useState("");
-  const [refinedPR, setRefinedPR] = useState("");
-  
-  // Competitor Analysis state
-  const [analysisCompany, setAnalysisCompany] = useState("");
-  const [analysisIndustry, setAnalysisIndustry] = useState("");
-  const [competitors, setCompetitors] = useState<string[]>([]);
-  const [analysisResults, setAnalysisResults] = useState<CompetitorAnalysis | null>(null);
-  const [savedAnalyses, setSavedAnalyses] = useState<CompetitorAnalysis[]>([]);
-  
-  // Trending Topics state
-  const [topicsIndustry, setTopicsIndustry] = useState("");
-  const [topicsKeywords, setTopicsKeywords] = useState<string[]>([]);
-  const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
-  
-  // Media Audit state
-  const [auditCompany, setAuditCompany] = useState("");
-  const [auditWebsite, setAuditWebsite] = useState("");
-  const [mediaPresence, setMediaPresence] = useState<MediaPresence[]>([]);
-  
-  // Settings state
-  const [showSettings, setShowSettings] = useState(false);
-  const [claudeApiKey, setClaudeApiKey] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
-
-  // Load saved data
-  useEffect(() => {
-    loadSavedAnalyses();
-    loadClaudeApiKey();
-  }, []);
-
-  const loadClaudeApiKey = () => {
-    const savedKey = localStorage.getItem(CLAUDE_API_KEY_STORAGE);
-    if (savedKey) {
-      setClaudeApiKey(savedKey);
-    }
+// ─── KeywordTagInput ──────────────────────────────────────────────────────────
+function KeywordTagInput({ keywords, onChange, maxKeywords = 5 }) {
+  const [input, setInput] = useState("");
+  const add = () => {
+    const t = input.trim();
+    if (t && !keywords.includes(t) && keywords.length < maxKeywords) { onChange([...keywords, t]); setInput(""); }
   };
-
-  const saveClaudeApiKey = () => {
-    if (claudeApiKey.trim()) {
-      localStorage.setItem(CLAUDE_API_KEY_STORAGE, claudeApiKey.trim());
-      toast.success("API key saved successfully");
-      setShowSettings(false);
-    } else {
-      toast.error("Please enter a valid API key");
-    }
-  };
-
-  const loadSavedAnalyses = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("competitor_analysis")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      if (data) setSavedAnalyses(data);
-    } catch (err) {
-      console.error("Error loading analyses:", err);
-    }
-  };
-
-  const simulateProgress = (duration: number) => {
-    setProgress(0);
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 95) {
-          clearInterval(interval);
-          return prev;
-        }
-        return prev + 5;
-      });
-    }, duration / 20);
-    return interval;
-  };
-
-  // PR Generation
-  const handleGeneratePR = async () => {
-    if (!companyData.name || !prProductName || prKeyFeatures.length === 0) {
-      toast.error("Please fill in all required fields and set up company data");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    const progressInterval = simulateProgress(15000);
-
-    try {
-      const systemPrompt = `You are an expert PR writer specializing in product launches and company announcements. 
-Create compelling, newsworthy press releases that follow AP style guidelines and industry best practices.
-Focus on creating attention-grabbing headlines and engaging content that journalists will want to cover.`;
-
-      const userPrompt = `Create a ${prPackage} package press release for:
-
-Company: ${companyData.name}
-Industry: ${companyData.industry}
-Website: ${companyData.website}
-Description: ${companyData.description}
-
-Product/Announcement: ${prProductName}
-Title/Angle: ${prTitle}
-Key Features: ${prKeyFeatures.join(", ")}
-Target Audience: ${prTargetAudience}
-Launch Date: ${prLaunchDate}
-${prQuote ? `Quote: "${prQuote}"` : ""}
-${prAdditionalInfo ? `Additional Context: ${prAdditionalInfo}` : ""}
-
-Package Level Guidelines:
-${prPackage === "starter" ? "- Length: 300-400 words\n- Focus on core message and key features\n- Include one quote" : ""}
-${prPackage === "standard" ? "- Length: 500-600 words\n- Include market context and benefits\n- Include 2-3 quotes from different perspectives\n- Add brief company background" : ""}
-${prPackage === "premium" ? "- Length: 700-800 words\n- Comprehensive market analysis\n- Multiple quotes from executives and industry experts\n- Detailed company background\n- Market statistics and trends\n- Call-to-action and media contact information" : ""}
-
-Format the press release professionally with:
-- Compelling headline
-- Location and date dateline
-- Strong opening paragraph (who, what, when, where, why)
-- Supporting paragraphs with key details
-- Quotes from company spokesperson
-- Company boilerplate
-- Media contact information`;
-
-      const result = await ai(systemPrompt, userPrompt);
-      setGeneratedPR(result);
-      setProgress(100);
-      toast.success("Press release generated successfully!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to generate press release";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      clearInterval(progressInterval);
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  // PR Refinement
-  const handleRefinePR = async () => {
-    if (!originalPR || !refinementInstructions) {
-      toast.error("Please provide both the original PR and refinement instructions");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    const progressInterval = simulateProgress(10000);
-
-    try {
-      const systemPrompt = `You are an expert PR editor. Your job is to refine and improve press releases based on specific feedback and instructions.
-Maintain the core message while implementing the requested changes.
-Ensure the refined version follows AP style and PR best practices.`;
-
-      const userPrompt = `Original Press Release:
-${originalPR}
-
-Refinement Instructions:
-${refinementInstructions}
-
-Please refine the press release according to these instructions while maintaining professional quality and newsworthiness.`;
-
-      const result = await ai(systemPrompt, userPrompt);
-      setRefinedPR(result);
-      setProgress(100);
-      toast.success("Press release refined successfully!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to refine press release";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      clearInterval(progressInterval);
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  // Competitor Analysis
-  const handleCompetitorAnalysis = async () => {
-    if (!analysisCompany || !analysisIndustry || competitors.length === 0) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    const progressInterval = simulateProgress(20000);
-
-    try {
-      const systemPrompt = `You are a business analyst specializing in competitive intelligence and market positioning.
-Provide detailed, actionable insights about companies and their competitive landscape.
-Focus on strategic advantages, market opportunities, and concrete recommendations.`;
-
-      const userPrompt = `Analyze the competitive landscape for:
-
-Company: ${analysisCompany}
-Industry: ${analysisIndustry}
-Key Competitors: ${competitors.join(", ")}
-
-Provide a comprehensive analysis including:
-1. Market position assessment
-2. Competitive advantages and differentiators
-3. Strategic recommendations
-4. Overall market score (0-100)
-
-For each competitor, analyze:
-- Key strengths
-- Potential weaknesses
-- Estimated market share
-
-Return the analysis in JSON format:
-{
-  "market_position": "detailed description",
-  "competitive_advantages": ["advantage1", "advantage2", ...],
-  "recommendations": ["recommendation1", "recommendation2", ...],
-  "overall_score": 85,
-  "competitors": [
-    {
-      "name": "Competitor Name",
-      "strengths": ["strength1", "strength2"],
-      "weaknesses": ["weakness1", "weakness2"],
-      "market_share": 25
-    }
-  ]
-}`;
-
-      const result = await ai(systemPrompt, userPrompt);
-      
-      // Parse JSON response
-      const jsonMatch = result.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("Failed to parse analysis results");
-      }
-      
-      const analysisData = JSON.parse(jsonMatch[0]);
-      
-      // Save to database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: savedData, error: saveError } = await supabase
-          .from("competitor_analysis")
-          .insert({
-            user_id: user.id,
-            company_name: analysisCompany,
-            industry: analysisIndustry,
-            competitors: analysisData.competitors,
-            analysis: {
-              market_position: analysisData.market_position,
-              competitive_advantages: analysisData.competitive_advantages,
-              recommendations: analysisData.recommendations,
-              overall_score: analysisData.overall_score
-            }
-          })
-          .select()
-          .single();
-
-        if (saveError) throw saveError;
-        if (savedData) {
-          setAnalysisResults(savedData);
-          await loadSavedAnalyses();
-        }
-      }
-
-      setProgress(100);
-      toast.success("Analysis completed successfully!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to complete analysis";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      clearInterval(progressInterval);
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  // Trending Topics
-  const handleTrendingTopics = async () => {
-    if (!topicsIndustry) {
-      toast.error("Please specify your industry");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    const progressInterval = simulateProgress(15000);
-
-    try {
-      const prompt = `Research current trending topics and news for the ${topicsIndustry} industry${
-        topicsKeywords.length > 0 ? ` with focus on: ${topicsKeywords.join(", ")}` : ""
-      }.
-
-Identify 5-7 trending topics that would be relevant for PR and content marketing.
-For each topic, provide:
-- Topic name/title
-- Relevance score (0-100)
-- Why it's relevant to this industry
-- 3-4 potential PR angles or story ideas
-
-Return in JSON format:
-[
-  {
-    "topic": "Topic Name",
-    "relevance_score": 85,
-    "why_relevant": "Explanation of relevance",
-    "potential_angles": ["angle1", "angle2", "angle3"]
-  }
-]`;
-
-      const result = await aiW(prompt);
-      
-      // Parse JSON response
-      const jsonMatch = result.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error("Failed to parse trending topics");
-      }
-      
-      const topics = JSON.parse(jsonMatch[0]);
-      setTrendingTopics(topics);
-      setProgress(100);
-      toast.success("Trending topics identified!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch trending topics";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      clearInterval(progressInterval);
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  // Media Presence Audit
-  const handleMediaAudit = async () => {
-    if (!auditCompany || !auditWebsite) {
-      toast.error("Please provide company name and website");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    const progressInterval = simulateProgress(20000);
-
-    try {
-      const prompt = `Conduct a comprehensive media presence audit for:
-Company: ${auditCompany}
-Website: ${auditWebsite}
-
-Analyze their presence and effectiveness across these platforms:
-- News/Press Coverage
-- Social Media (LinkedIn, Twitter, Facebook, Instagram)
-- Industry Publications
-- Thought Leadership
-- Content Marketing
-
-For each platform, provide:
-- Presence score (0-100)
-- Key findings (what they're doing well, what's missing)
-- Specific recommendations for improvement
-
-Return in JSON format:
-[
-  {
-    "platform": "Platform Name",
-    "presence_score": 75,
-    "findings": ["finding1", "finding2"],
-    "recommendations": ["rec1", "rec2"]
-  }
-]`;
-
-      const result = await aiW(prompt);
-      
-      // Parse JSON response
-      const jsonMatch = result.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error("Failed to parse audit results");
-      }
-      
-      const auditResults = JSON.parse(jsonMatch[0]);
-      setMediaPresence(auditResults);
-      setProgress(100);
-      toast.success("Media audit completed!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to complete audit";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      clearInterval(progressInterval);
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
-
-  const downloadAsText = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Downloaded successfully!");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                PR Dashboard
-              </h1>
-              <p className="text-gray-600 mt-2">Professional press release and PR management suite</p>
-            </div>
-            <div className="flex gap-3">
-              <CompanyDataModal
-                companyData={companyData}
-                onSave={setCompanyData}
-                isOpen={isCompanyModalOpen}
-                onOpenChange={setIsCompanyModalOpen}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSettings(true)}
-                className="gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                Settings
-              </Button>
-            </div>
-          </div>
-
-          {/* Company Info Banner */}
-          {companyData.name && (
-            <Card className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Building2 className="w-8 h-8" />
-                    <div>
-                      <h3 className="font-semibold text-lg">{companyData.name}</h3>
-                      <p className="text-blue-100 text-sm">{companyData.industry}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setIsCompanyModalOpen(true)}
-                    className="gap-2"
-                  >
-                    Edit Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {!companyData.name && (
-            <Alert className="border-blue-200 bg-blue-50">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-900">
-                Set up your company information to get started with AI-powered PR tools.
-                <Button
-                  variant="link"
-                  className="ml-2 p-0 h-auto text-blue-600"
-                  onClick={() => setIsCompanyModalOpen(true)}
-                >
-                  Add Company Data
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        {/* Settings Dialog */}
-        <Dialog open={showSettings} onOpenChange={setShowSettings}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>API Settings</DialogTitle>
-              <DialogDescription>
-                Configure your Claude API key for press release generation
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="api-key">Claude API Key</Label>
-                <div className="flex gap-2 mt-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="api-key"
-                      type={showApiKey ? "text" : "password"}
-                      value={claudeApiKey}
-                      onChange={(e) => setClaudeApiKey(e.target.value)}
-                      placeholder="sk-ant-..."
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                    >
-                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Get your API key from{" "}
-                  <a
-                    href="https://console.anthropic.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    Anthropic Console
-                  </a>
-                </p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowSettings(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={saveClaudeApiKey}>
-                  Save API Key
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Progress Bar */}
-        {loading && (
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Processing...</span>
-                  <span className="font-medium text-blue-600">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Error Display */}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-5 lg:w-auto w-full">
-            <TabsTrigger value="generate" className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              Generate PR
-            </TabsTrigger>
-            <TabsTrigger value="refine" className="gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Refine
-            </TabsTrigger>
-            <TabsTrigger value="analysis" className="gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Analysis
-            </TabsTrigger>
-            <TabsTrigger value="trends" className="gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Trends
-            </TabsTrigger>
-            <TabsTrigger value="audit" className="gap-2">
-              <Target className="w-4 h-4" />
-              Audit
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Generate PR Tab */}
-          <TabsContent value="generate" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
-                  Generate Press Release
-                </CardTitle>
-                <CardDescription>
-                  Create a professional press release with AI assistance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Package Selection */}
-                <div className="space-y-3">
-                  <Label>Select Package</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                      {
-                        value: "starter" as const,
-                        name: "Starter",
-                        price: "$99",
-                        features: ["300-400 words", "Basic structure", "1 quote"],
-                        icon: Target
-                      },
-                      {
-                        value: "standard" as const,
-                        name: "Standard",
-                        price: "$199",
-                        features: ["500-600 words", "Market context", "2-3 quotes", "Company background"],
-                        icon: TrendingUp
-                      },
-                      {
-                        value: "premium" as const,
-                        name: "Premium",
-                        price: "$299",
-                        features: ["700-800 words", "Full analysis", "Multiple quotes", "Expert insights"],
-                        icon: Sparkles
-                      }
-                    ].map((pkg) => {
-                      const Icon = pkg.icon;
-                      return (
-                        <Card
-                          key={pkg.value}
-                          className={`cursor-pointer transition-all ${
-                            prPackage === pkg.value
-                              ? "ring-2 ring-blue-600 shadow-lg"
-                              : "hover:shadow-md"
-                          }`}
-                          onClick={() => prSetPackage(pkg.value)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-lg">{pkg.name}</h3>
-                                <p className="text-2xl font-bold text-blue-600">{pkg.price}</p>
-                              </div>
-                              <Icon className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <ul className="space-y-1 text-sm text-gray-600">
-                              {pkg.features.map((feature, i) => (
-                                <li key={i} className="flex items-center gap-2">
-                                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                  {feature}
-                                </li>
-                              ))}
-                            </ul>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pr-title">Press Release Title *</Label>
-                    <Input
-                      id="pr-title"
-                      placeholder="e.g., Company Announces Revolutionary New Product"
-                      value={prTitle}
-                      onChange={(e) => prSetTitle(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pr-product">Product/Announcement Name *</Label>
-                    <Input
-                      id="pr-product"
-                      placeholder="e.g., SmartWidget Pro"
-                      value={prProductName}
-                      onChange={(e) => prSetProductName(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pr-audience">Target Audience</Label>
-                    <Input
-                      id="pr-audience"
-                      placeholder="e.g., Small business owners, Tech enthusiasts"
-                      value={prTargetAudience}
-                      onChange={(e) => prSetTargetAudience(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pr-date">Launch Date</Label>
-                    <Input
-                      id="pr-date"
-                      type="date"
-                      value={prLaunchDate}
-                      onChange={(e) => prSetLaunchDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Key Features/Benefits *</Label>
-                  <KeywordTagInput
-                    tags={prKeyFeatures}
-                    onChange={prSetKeyFeatures}
-                    placeholder="Add key features (press Enter after each)"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pr-quote">Quote from Spokesperson</Label>
-                  <Textarea
-                    id="pr-quote"
-                    placeholder="e.g., We're excited to introduce this game-changing solution..."
-                    value={prQuote}
-                    onChange={(e) => prSetQuote(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pr-additional">Additional Information</Label>
-                  <Textarea
-                    id="pr-additional"
-                    placeholder="Any other relevant details, context, or specifications..."
-                    value={prAdditionalInfo}
-                    onChange={(e) => prSetAdditionalInfo(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                <Button
-                  onClick={handleGeneratePR}
-                  disabled={loading || !companyData.name || !prProductName || prKeyFeatures.length === 0}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating Press Release...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Press Release
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Generated PR Display */}
-            {generatedPR && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      Generated Press Release
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(generatedPR)}
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadAsText(generatedPR, `press-release-${Date.now()}.txt`)}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed bg-gray-50 p-6 rounded-lg">
-                      {generatedPR}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Refine PR Tab */}
-          <TabsContent value="refine" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5 text-purple-600" />
-                  Refine Press Release
-                </CardTitle>
-                <CardDescription>
-                  Improve and customize your press release with AI assistance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="original-pr">Original Press Release *</Label>
-                  <Textarea
-                    id="original-pr"
-                    placeholder="Paste your press release here..."
-                    value={originalPR}
-                    onChange={(e) => setOriginalPR(e.target.value)}
-                    rows={10}
-                    className="font-mono text-sm"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="refinement">Refinement Instructions *</Label>
-                  <Textarea
-                    id="refinement"
-                    placeholder="e.g., Make it more engaging, add industry statistics, emphasize sustainability benefits..."
-                    value={refinementInstructions}
-                    onChange={(e) => setRefinementInstructions(e.target.value)}
-                    rows={4}
-                  />
-                  <p className="text-sm text-gray-500">
-                    Be specific about what you want to change or improve
-                  </p>
-                </div>
-
-                <Button
-                  onClick={handleRefinePR}
-                  disabled={loading || !originalPR || !refinementInstructions}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Refining Press Release...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Refine Press Release
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Refined PR Display */}
-            {refinedPR && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      Refined Press Release
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(refinedPR)}
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadAsText(refinedPR, `refined-pr-${Date.now()}.txt`)}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed bg-gray-50 p-6 rounded-lg">
-                      {refinedPR}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Competitor Analysis Tab */}
-          <TabsContent value="analysis" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                  Competitor Analysis
-                </CardTitle>
-                <CardDescription>
-                  Analyze your competitive landscape and identify opportunities
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="analysis-company">Your Company Name *</Label>
-                    <Input
-                      id="analysis-company"
-                      placeholder="e.g., Acme Corp"
-                      value={analysisCompany}
-                      onChange={(e) => setAnalysisCompany(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="analysis-industry">Industry *</Label>
-                    <Input
-                      id="analysis-industry"
-                      placeholder="e.g., SaaS, E-commerce, Healthcare"
-                      value={analysisIndustry}
-                      onChange={(e) => setAnalysisIndustry(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Key Competitors *</Label>
-                  <KeywordTagInput
-                    tags={competitors}
-                    onChange={setCompetitors}
-                    placeholder="Add competitor names (press Enter after each)"
-                  />
-                </div>
-
-                <Button
-                  onClick={handleCompetitorAnalysis}
-                  disabled={loading || !analysisCompany || !analysisIndustry || competitors.length === 0}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing Competition...
-                    </>
-                  ) : (
-                    <>
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      Analyze Competition
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Analysis Results */}
-            {analysisResults && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      Analysis Results
-                    </span>
-                    <Badge variant="secondary" className="text-lg">
-                      Score: {analysisResults.analysis.overall_score}/100
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Market Position */}
-                  <div>
-                    <h3 className="font-semibold mb-2 flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      Market Position
-                    </h3>
-                    <p className="text-gray-600">{analysisResults.analysis.market_position}</p>
-                  </div>
-
-                  {/* Competitive Advantages */}
-                  <div>
-                    <h3 className="font-semibold mb-2 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" />
-                      Competitive Advantages
-                    </h3>
-                    <ul className="space-y-1">
-                      {analysisResults.analysis.competitive_advantages.map((advantage, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-gray-600">{advantage}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Recommendations */}
-                  <div>
-                    <h3 className="font-semibold mb-2 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4" />
-                      Strategic Recommendations
-                    </h3>
-                    <ul className="space-y-1">
-                      {analysisResults.analysis.recommendations.map((rec, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-blue-600 font-semibold">{index + 1}.</span>
-                          <span className="text-gray-600">{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Competitor Breakdown */}
-                  {analysisResults.competitors && analysisResults.competitors.length > 0 && (
-                    <div>
-                      <h3 className="font-semibold mb-3">Competitor Breakdown</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {analysisResults.competitors.map((competitor, index) => (
-                          <Card key={index}>
-                            <CardHeader>
-                              <CardTitle className="text-base">{competitor.name}</CardTitle>
-                              <CardDescription>
-                                Market Share: {competitor.market_share}%
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                              <div>
-                                <p className="text-sm font-medium text-green-600 mb-1">Strengths</p>
-                                <ul className="text-sm space-y-1">
-                                  {competitor.strengths.map((strength, i) => (
-                                    <li key={i} className="text-gray-600">• {strength}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-orange-600 mb-1">Weaknesses</p>
-                                <ul className="text-sm space-y-1">
-                                  {competitor.weaknesses.map((weakness, i) => (
-                                    <li key={i} className="text-gray-600">• {weakness}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Saved Analyses */}
-            {savedAnalyses.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Previous Analyses</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {savedAnalyses.map((analysis) => (
-                      <div
-                        key={analysis.id}
-                        className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => setAnalysisResults(analysis)}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">{analysis.company_name}</h4>
-                          <Badge variant="outline">
-                            {analysis.analysis.overall_score}/100
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          {analysis.industry} • {new Date(analysis.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Trending Topics Tab */}
-          <TabsContent value="trends" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  Trending Topics
-                </CardTitle>
-                <CardDescription>
-                  Discover trending topics and opportunities in your industry
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="topics-industry">Industry *</Label>
-                  <Input
-                    id="topics-industry"
-                    placeholder="e.g., Technology, Healthcare, Finance"
-                    value={topicsIndustry}
-                    onChange={(e) => setTopicsIndustry(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Focus Keywords (Optional)</Label>
-                  <KeywordTagInput
-                    tags={topicsKeywords}
-                    onChange={setTopicsKeywords}
-                    placeholder="Add keywords to narrow focus (press Enter after each)"
-                  />
-                </div>
-
-                <Button
-                  onClick={handleTrendingTopics}
-                  disabled={loading || !topicsIndustry}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Researching Trends...
-                    </>
-                  ) : (
-                    <>
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      Find Trending Topics
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Trending Topics Results */}
-            {trendingTopics.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    Trending Topics
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {trendingTopics.map((topic, index) => (
-                      <Card key={index}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <CardTitle className="text-base">{topic.topic}</CardTitle>
-                            <Badge
-                              variant={topic.relevance_score >= 80 ? "default" : "secondary"}
-                              className="ml-2"
-                            >
-                              {topic.relevance_score}/100
-                            </Badge>
-                          </div>
-                          <CardDescription>{topic.why_relevant}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div>
-                            <p className="text-sm font-medium mb-2">Potential PR Angles:</p>
-                            <ul className="space-y-1">
-                              {topic.potential_angles.map((angle, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm">
-                                  <span className="text-blue-600">•</span>
-                                  <span className="text-gray-600">{angle}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Media Audit Tab */}
-          <TabsContent value="audit" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-purple-600" />
-                  Media Presence Audit
-                </CardTitle>
-                <CardDescription>
-                  Analyze your company's media presence and get actionable recommendations
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="audit-company">Company Name *</Label>
-                    <Input
-                      id="audit-company"
-                      placeholder="e.g., Acme Corp"
-                      value={auditCompany}
-                      onChange={(e) => setAuditCompany(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="audit-website">Website URL *</Label>
-                    <Input
-                      id="audit-website"
-                      type="url"
-                      placeholder="e.g., https://example.com"
-                      value={auditWebsite}
-                      onChange={(e) => setAuditWebsite(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleMediaAudit}
-                  disabled={loading || !auditCompany || !auditWebsite}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Conducting Audit...
-                    </>
-                  ) : (
-                    <>
-                      <Target className="w-4 h-4 mr-2" />
-                      Conduct Media Audit
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Media Audit Results */}
-            {mediaPresence.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    Media Presence Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mediaPresence.map((platform, index) => (
-                      <Card key={index}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <CardTitle className="text-base">{platform.platform}</CardTitle>
-                            <Badge
-                              variant={platform.presence_score >= 70 ? "default" : "secondary"}
-                            >
-                              {platform.presence_score}/100
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Progress value={platform.presence_score} className="h-2" />
-                          </div>
-
-                          <div>
-                            <p className="text-sm font-medium mb-2">Key Findings</p>
-                            <ul className="space-y-1">
-                              {platform.findings.map((finding, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm">
-                                  <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                                  <span className="text-gray-600">{finding}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          <div>
-                            <p className="text-sm font-medium mb-2">Recommendations</p>
-                            <ul className="space-y-1">
-                              {platform.recommendations.map((rec, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm">
-                                  <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                                  <span className="text-gray-600">{rec}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+    <div className="field-input" style={{ display:"flex", flexWrap:"wrap", gap:".35rem", minHeight:"42px", padding:".35rem .5rem", cursor:"text" }}>
+      {keywords.map((kw, i) => (
+        <span key={i} style={{ background:"#eef2ff", color:"#4338ca", fontSize:".75rem", fontWeight:600, padding:".18rem .5rem", borderRadius:".35rem", display:"flex", alignItems:"center", gap:".2rem" }}>
+          {kw}<button onClick={() => onChange(keywords.filter((_,j)=>j!==i))} style={{ color:"#6366f1", fontWeight:700, background:"none", border:"none", cursor:"pointer", lineHeight:1, padding:0 }}>×</button>
+        </span>
+      ))}
+      {keywords.length < maxKeywords && (
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"){e.preventDefault();add();} }}
+          placeholder={keywords.length===0?"Type + Enter":"Add more..."} style={{ flex:1, outline:"none", fontSize:".875rem", minWidth:"100px", background:"transparent", border:"none", padding:".1rem 0" }}/>
+      )}
     </div>
   );
-};
+}
 
-export default PRDashboard;
+// ─── Claude API ───────────────────────────────────────────────────────────────
+async function callClaude(userContent, system = "", maxTokens = 1000, apiKey = "") {
+  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+  if (apiKey) headers["x-api-key"] = apiKey;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      ...(system ? { system } : {}),
+      messages: [{ role: "user", content: userContent }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+// Claude with web_search tool — used for website crawling
+async function callGemini(prompt, apiKey = "") {
+  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+  if (apiKey) headers["x-api-key"] = apiKey;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  const text = (data.content ?? []).filter(b => b.type === "text").map(b => b.text).join("");
+  if (!text) throw new Error("Empty response");
+  return text;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const OUTLETS = ["Yahoo Finance","Business Insider","Digital Journal","Associated Press","NewsBreak","TechBullion","MSN","Street Insider","openPR","Minyanville","The Chronicle Journal","Big News Network"];
+const RADAR_COLORS = ["#818cf8","#34d399","#fb923c","#f472b6"];
+const FOCUS_OPTIONS = [
+  { value:"Company News",       emoji:"📢", desc:"Announcements, partnerships, updates" },
+  { value:"How-to Guide",       emoji:"📚", desc:"Step-by-step tutorial or instructional" },
+  { value:"Thought Leadership", emoji:"💡", desc:"Expert perspectives and insights" },
+  { value:"Opinion/Editorial",  emoji:"✍️", desc:"Commentary on current topics" },
+  { value:"Best Practices",     emoji:"⭐", desc:"Proven strategies and recommendations" },
+  { value:"Case Study",         emoji:"📋", desc:"Real-world examples and lessons" },
+];
+const THEME_OPTIONS = [
+  { value:"thought-provoking", emoji:"💭", label:"Thought-Provoking", desc:"Intellectual, encourages deep reflection" },
+  { value:"investigative",     emoji:"🔎", label:"Investigative",     desc:"In-depth, fact-finding, analytical" },
+  { value:"breaking-news",     emoji:"📰", label:"Breaking News",     desc:"Urgent, immediate, time-sensitive" },
+  { value:"scientific",        emoji:"📊", label:"Scientific",        desc:"Data-driven, objective, precise" },
+];
+const EMPTY_COMPANY = { name:"", industry:"", websiteUrl:"", googleProfileUrl:"", summaryFileUrl:"", quoteAttribution:"", about:"", services:"", address:"", phone:"", email:"" };
+const GEMINI_MODEL  = "gemini-3.1-pro-preview";
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+const SparklesIcon  = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.88 5.76L19.64 9l-4.76 3.46L16.76 18 12 14.54 7.24 18l1.88-5.54L4.36 9l5.76-.24z"/></svg>;
+const LoaderIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
+const CheckIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>;
+const XIcon         = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const CopyIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>;
+const SearchIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+const ZapIcon       = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+const ExternalLinkIcon = ({size=14}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 0 2 2h-8a2 2 0 0 0 2-2v-4"/><polyline points="16 7 22 7 22 13"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
+const BackIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>;
+const LockIcon      = ({size=14}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+const TrendUpIcon   = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+const TrendDownIcon = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>;
+const ShieldIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+const CartIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>;
+const NewsIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>;
+const BarIcon       = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>;
+const BriefIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+const AlertIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+const ClipboardIcon = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-11l5 5v11a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>;
+const UploadIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+const BuildingIcon  = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="9" width="18" height="13" rx="1"/><path d="M8 22V12h8v10"/><path d="M3 9l9-6 9 6"/></svg>;
+const GlobeIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
+const PhoneIcon     = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
+const MailIcon      = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
+const MapPinIcon    = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+const SettingsIcon  = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function PRDashboard() {
+
+  // ── Company Data (persisted to window.storage) ────────────────────────────
+  const [companyData, setCompanyData] = useState(EMPTY_COMPANY);
+  const [dataLoaded,  setDataLoaded]  = useState(false);
+
+  // ── API Keys ───────────────────────────────────────────────────────────────
+  const [geminiApiKey,    setGeminiApiKey]    = useState("");
+  const [geminiKeyDraft,  setGeminiKeyDraft]  = useState("");
+  const [claudeApiKey,    setClaudeApiKey]    = useState("");
+  const [claudeKeyDraft,  setClaudeKeyDraft]  = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await window.storage.get("mbb:companyData");
+        if (result?.value) setCompanyData(JSON.parse(result.value));
+      } catch {}
+      try {
+        const r = await window.storage.get("mbb:geminiKey");
+        if (r?.value) { setGeminiApiKey(r.value); setGeminiKeyDraft(r.value); }
+      } catch {}
+      try {
+        const r = await window.storage.get("mbb:claudeKey");
+        if (r?.value) { setClaudeApiKey(r.value); setClaudeKeyDraft(r.value); }
+      } catch {}
+      setDataLoaded(true);
+    })();
+  }, []);
+
+  const saveCompanyData = async (data) => {
+    setCompanyData(data);
+    try { await window.storage.set("mbb:companyData", JSON.stringify(data)); } catch {}
+  };
+
+  const { name: companyName, industry, websiteUrl: siteUrl, quoteAttribution } = companyData;
+
+  // Wrappers that inject the stored API key automatically
+  const ai  = (content, system="", tokens=1000) => callClaude(content, system, tokens, claudeApiKey);
+  const aiW = (prompt) => callGemini(prompt, claudeApiKey); // web_search variant
+
+  // ── UI State ──────────────────────────────────────────────────────────────
+  const [activeTab,          setActiveTab]          = useState("topics");
+  const [showCompanyData,    setShowCompanyData]    = useState(false);
+  const [showSettings,       setShowSettings]       = useState(false);
+  const [showRefineDialog,   setShowRefineDialog]   = useState(false);
+  const [showGeneratedView,  setShowGeneratedView]  = useState(false);
+  const [showThankYou,       setShowThankYou]       = useState(false);
+  const [showFocusDropdown,  setShowFocusDropdown]  = useState(false);
+  const [showThemeDropdown,  setShowThemeDropdown]  = useState(false);
+  const [cdMode,             setCdMode]             = useState("ai");
+
+  // Company Data modal local state
+  const [cdDraft,         setCdDraft]         = useState(EMPTY_COMPANY);
+  const [aiCrawlUrl,      setAiCrawlUrl]      = useState("");
+  const [crawlSourceType, setCrawlSourceType] = useState("website"); // "website"|"google"|"summary"
+  const [isCrawling,      setIsCrawling]      = useState(false);
+  const [crawlError,      setCrawlError]      = useState(null);
+  const [crawlStatus,     setCrawlStatus]     = useState("");
+  const [crawlPages,      setCrawlPages]      = useState([]);
+
+  const openCompanyData = () => {
+    setCdDraft({ ...companyData });
+    setAiCrawlUrl(companyData.websiteUrl || "");
+    setCrawlSourceType("website");
+    setCrawlError(null);
+    setCrawlStatus("");
+    setCrawlPages([]);
+    setShowCompanyData(true);
+  };
+
+  // ── Loading / Error ────────────────────────────────────────────────────────
+  const [isLoading,   setIsLoading]   = useState(false);
+  const [isScanning,  setIsScanning]  = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error,       setError]       = useState(null);
+  const [marketError, setMarketError] = useState(null);
+  const [toast,       setToast]       = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setToast({ message: msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ── Data State ─────────────────────────────────────────────────────────────
+  const [trendingTopics,    setTrendingTopics]    = useState([]);
+  const [topicsPage,        setTopicsPage]        = useState(0);
+  const [topicsFetched,     setTopicsFetched]     = useState(0); // live count during load
+  const [competitorData,    setCompetitorData]    = useState(null);
+  const [generatedPR,       setGeneratedPR]       = useState("");
+  const [contentIdeas,      setContentIdeas]      = useState({});
+  const [showContentIdeas,  setShowContentIdeas]  = useState({});
+  const [selectedTopic,     setSelectedTopic]     = useState(null);
+  const [orders,            setOrders]            = useState([]);
+  const [selectedOrder,     setSelectedOrder]     = useState(null);
+  const [verifyUrl,         setVerifyUrl]         = useState("");
+  const [verificationStatus,setVerificationStatus]= useState(null);
+  const [selectedWidgetStyle,setSelectedWidgetStyle] = useState(1);
+  const [widgetResolution,  setWidgetResolution]  = useState("starter");
+  const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
+  const [refinementInstructions, setRefinementInstructions] = useState("");
+  const [refinementCount,   setRefinementCount]   = useState(0);
+  const [customPRPrompt,    setCustomPRPrompt]    = useState("");
+
+  const [prFormData, setPrFormData] = useState({
+    about:"", quote:"", keywords:[], wordCount:"500",
+    mainFocus:"Company News", theme:"thought-provoking",
+    videoUrl:"", mapsEmbed:"", featuredImage:null
+  });
+
+  // ── AI: Crawl Website via Supabase Edge Function ─────────────────────────
+  const crawlWebsite = async () => {
+    const rawUrl = aiCrawlUrl.trim().replace(/\/$/, "");
+    if (!rawUrl) { setCrawlError("Please enter a URL"); return; }
+
+    setIsCrawling(true);
+    setCrawlError(null);
+    setCrawlPages([]);
+
+    const PRIORITY_PATHS = [
+      { path:"",             label:"Home"       },
+      { path:"/about",       label:"About"      },
+      { path:"/about-us",    label:"About Us"   },
+      { path:"/services",    label:"Services"   },
+      { path:"/contact",     label:"Contact"    },
+      { path:"/contact-us",  label:"Contact Us" },
+    ];
+
+    const isWebsite = crawlSourceType === "website";
+    const allPages  = isWebsite ? PRIORITY_PATHS : [{ path:"", label: crawlSourceType === "google" ? "Google Profile" : "Summary File" }];
+
+    setCrawlPages(allPages.map(p => ({ ...p, status:"loading" })));
+    setCrawlStatus("Extracting with AI…");
+
+    try {
+      // Call Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('crawl-website-data', {
+        body: { websiteUrl: rawUrl }
+      });
+
+      if (error) throw error;
+      if (!data) throw new Error("No data returned");
+
+      setCrawlPages(allPages.map(p => ({ ...p, status:"ok" })));
+      setCdDraft(prev => ({ ...prev, ...data, websiteUrl: isWebsite ? rawUrl : prev.websiteUrl }));
+      setCdMode("manual");
+      showToast("Data extracted — review and save!");
+    } catch(e: any) {
+      setCrawlPages(prev => prev.map(p => ({ ...p, status:"skip" })));
+      setCrawlError("Extraction failed: " + (e.message || "unknown error"));
+    }
+
+    setCrawlStatus("");
+    setIsCrawling(false);
+  };
+
+  // ── AI: Trending Topics — Google News RSS (real live articles) ───────────
+  const fetchTrendingTopics = async (cd = companyData) => {
+    const ind  = (cd.industry  || companyData.industry  || "").trim();
+    const svcs = (cd.services  || companyData.services  || "").trim();
+    if (!ind) { showToast("Add your industry in Company Data first", "error"); return; }
+
+    setIsLoading(true);
+    setError(null);
+    setTrendingTopics([]);
+    setTopicsPage(0);
+    setTopicsFetched(0);
+
+    const q1 = svcs ? `${ind} ${svcs.split(",")[0].trim()}` : `${ind} news`;
+    const q2 = svcs && svcs.split(",").length > 1
+      ? `${ind} ${svcs.split(",")[1].trim()}`
+      : `${ind} industry trends`;
+
+    const parseXml = (xml) => {
+      const doc   = new DOMParser().parseFromString(xml, "text/xml");
+      const items = Array.from(doc.querySelectorAll("item")).slice(0, 6);
+      return items.map(el => {
+        const title   = el.querySelector("title")?.textContent?.replace(/\s*-\s*[^-]+$/, "").trim() || "";
+        const link    = el.querySelector("link")?.textContent?.trim() || "";
+        const pubDate = el.querySelector("pubDate")?.textContent?.trim() || "";
+        const source  = el.querySelector("source")?.textContent?.trim() || "";
+        const desc    = el.querySelector("description")?.textContent?.replace(/<[^>]+>/g,"").trim() || "";
+        const d       = pubDate ? new Date(pubDate) : null;
+        const date    = d && !isNaN(d)
+          ? `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`
+          : "";
+        return { title, summary: desc.slice(0,220)+"…", source, date, url: link, relevance:"High" };
+      }).filter(t => t.title && t.url);
+    };
+
+    const fetchRSS = async (query) => {
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+      const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+        `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
+        `https://thingproxy.freeboard.io/fetch/${rssUrl}`,
+      ];
+      for (const proxyUrl of proxies) {
+        try {
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) continue;
+          let xml;
+          if (proxyUrl.includes("allorigins")) {
+            const json = await res.json();
+            xml = json.contents;
+          } else {
+            xml = await res.text();
+          }
+          if (!xml || xml.length < 100) continue;
+          const results = parseXml(xml);
+          if (results.length > 0) return results;
+        } catch(e) { continue; }
+      }
+      return [];
+    };
+
+    let all = [];
+    try {
+      const b1 = await fetchRSS(q1);
+      all = [...b1];
+      setTrendingTopics([...all]);
+      setTopicsFetched(all.length);
+    } catch(e) {}
+
+    try {
+      const b2 = await fetchRSS(q2);
+      const seen  = new Set(all.map(t => t.url));
+      const fresh = b2.filter(t => !seen.has(t.url));
+      all = [...all, ...fresh].slice(0, 12);
+      setTrendingTopics([...all]);
+      setTopicsFetched(all.length);
+    } catch(e) {}
+
+    if (all.length === 0) setError("Could not load articles — try again in a moment.");
+    else showToast(`${all.length} live articles found!`);
+    setIsLoading(false);
+  };
+
+  // ── AI: Competitor Analysis ────────────────────────────────────────────────
+  const scanMarket = async () => {
+    if (!companyName.trim() || !industry.trim()) { showToast("Add company name and industry in Company Data first", "error"); return; }
+    setIsScanning(true); setMarketError(null); setCompetitorData(null);
+    try {
+      const text = await ai(
+        `Analyze competitive PR landscape for "${companyName}" in "${industry}". Use 3 real named competitors. Return ONLY this JSON:
+{"userCompany":{"name":"${companyName}","scores":{"aiCitation":72,"mediaAuthority":65,"newsVolume":58,"sentimentPositivity":80,"topicLeadership":61}},"competitors":[{"name":"CompetitorName","scores":{"aiCitation":85,"mediaAuthority":78,"newsVolume":70,"sentimentPositivity":75,"topicLeadership":82},"trend":"up","gapAnalysis":"One sentence describing where they outperform you"}],"competitiveIntelligence":["Actionable insight 1","Actionable insight 2","Actionable insight 3","Actionable insight 4","Actionable insight 5"]}
+Replace example numbers with realistic varied scores 0-100. Include exactly 3 competitors.`,
+        "You are a PR intelligence analyst. Return ONLY valid JSON, no markdown."
+      );
+      const data = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setCompetitorData(data);
+      showToast("Competitor analysis complete!");
+    } catch(e) {
+      setMarketError("Analysis failed — try again.");
+    }
+    setIsScanning(false);
+  };
+
+  // ── AI: Content Ideas ──────────────────────────────────────────────────────
+  const generateContentIdeas = async (topic) => {
+    const tid = topic.title;
+    setShowContentIdeas(p => ({ ...p, [tid]: true }));
+    if (contentIdeas[tid]) return;
+    try {
+      const text = await ai(
+        `For the topic "${topic.title}" in the ${industry || "business"} industry, generate 4 compelling press release angles for ${companyName || "a company"}. Return ONLY a JSON array of 4 short headline strings.`,
+        "Return ONLY a JSON array of 4 strings. No markdown."
+      );
+      const ideas = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setContentIdeas(p => ({ ...p, [tid]: ideas }));
+    } catch {
+      setContentIdeas(p => ({ ...p, [tid]: [
+        `How ${industry||"Business"} Leaders Can Leverage This Trend`,
+        `5 Actionable Insights from the Latest ${industry||"Industry"} Data`,
+        `What This Means for Your ${industry||"Business"} in 2025`,
+        `Expert Take: The ${industry||"Industry"} Strategy You Need Now`
+      ]}));
+    }
+  };
+
+  // ── AI: Generate Press Release ─────────────────────────────────────────────
+  const generatePressRelease = async () => {
+    if (!prFormData.about.trim() || !prFormData.quote.trim()) {
+      showToast("Please fill in both the About and Quote fields", "error"); return;
+    }
+    setIsLoading(true); setShowGeneratedView(false); setRefinementCount(0);
+    try {
+      const { about, quote, keywords: kw, wordCount, mainFocus, theme, videoUrl } = prFormData;
+      const kwText = kw.length > 0 ? kw.join(", ") : "no specific keywords";
+      const topicRef = selectedTopic ? `\nBase this on trending angle: "${selectedTopic.selectedIdea || selectedTopic.title}"` : "";
+      const coAbout = companyData.about ? `\nCompany background: ${companyData.about}` : "";
+      const contact = [companyData.email, companyData.phone, companyData.address].filter(Boolean).join(" | ");
+      const prompt = customPRPrompt
+        ? customPRPrompt.replace(/{companyName}/g,companyName).replace(/{industry}/g,industry)
+            .replace(/{websiteUrl}/g,siteUrl).replace(/{mainFocus}/g,mainFocus)
+            .replace(/{theme}/g,theme).replace(/{targetWords}/g,wordCount)
+            .replace(/{keywordsText}/g,kwText).replace(/{about}/g,about)
+            .replace(/{quote}/g,quote).replace(/{quoteAttribution}/g,quoteAttribution)
+        : `Write a professional press release for ${companyName||"our company"} in the ${industry||"business"} industry.
+REQUIREMENTS: ~${wordCount} words, focus: ${mainFocus}, tone: ${theme}, keywords: ${kwText}, website: ${siteUrl||"N/A"}.${topicRef}${coAbout}
+CONTENT: ${about}
+QUOTE: "${quote}" — ${quoteAttribution||"Company Spokesperson"}${videoUrl?`\nVIDEO REFERENCE: ${videoUrl}`:""}
+FORMAT with HTML tags: <h1> headline, <p><strong>FOR IMMEDIATE RELEASE</strong></p>, dateline paragraph, 3-4 body paragraphs, quote with <em>, <h2>About ${companyName||"Company"}</h2> with description, <h2>Contact Information</h2> with ${contact||siteUrl||"contact details"}.
+Make it genuinely newsworthy and professionally written.`;
+      const text = await ai(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
+      setGeneratedPR(text);
+      setShowGeneratedView(true);
+      showToast("Press release generated!");
+    } catch(e) {
+      showToast("Generation failed — please try again", "error");
+    }
+    setIsLoading(false);
+  };
+
+  // ── AI: Refine Press Release ───────────────────────────────────────────────
+  const refinePressRelease = async () => {
+    if (!refinementInstructions.trim() || refinementCount >= 5) return;
+    setIsLoading(true);
+    try {
+      const text = await ai(
+        `Refine this press release per these instructions: "${refinementInstructions}"\n\nCurrent press release:\n${generatedPR}\n\nReturn the complete refined version in proper HTML.`,
+        "You are an expert PR editor. Apply the requested changes while maintaining professional quality.",
+        2000
+      );
+      setGeneratedPR(text);
+      setRefinementCount(p => p + 1);
+      setShowRefineDialog(false);
+      setRefinementInstructions("");
+      showToast(`PR refined! (${refinementCount+1}/5 used)`);
+    } catch { showToast("Refinement failed — try again", "error"); }
+    setIsLoading(false);
+  };
+
+  // ── Widget Embed Code ──────────────────────────────────────────────────────
+  const getWidgetEmbedCode = () => {
+    const s = {
+      1:`<div style="font-family:sans-serif;padding:20px;text-align:center;background:white;border-radius:8px;">\n  <p style="font-size:11px;color:#999;letter-spacing:2px;margin-bottom:14px;">AS SEEN ON</p>\n  <img src="/as-seen-on1.png" alt="Media outlets" style="height:30px;">\n</div>`,
+      2:`<div style="font-family:Georgia,serif;padding:28px;text-align:center;background:#fafafa;border-radius:12px;border:1px solid #eee;">\n  <h3 style="font-size:16px;color:#333;margin-bottom:18px;font-style:italic;">Featured In</h3>\n  <img src="/as-seen-on2.png" alt="Media outlets" style="height:34px;">\n</div>`,
+      3:`<div style="font-family:sans-serif;padding:24px;text-align:center;background:#0f172a;border-radius:14px;">\n  <p style="font-size:12px;font-weight:700;color:#818cf8;margin-bottom:18px;letter-spacing:3px;">FEATURED IN</p>\n  <img src="/as-seen-on3.png" alt="Media" style="height:30px;filter:brightness(0) invert(1);">\n</div>`,
+      4:`<div style="font-family:sans-serif;padding:24px;text-align:center;background:white;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,.08);">\n  <p style="font-size:11px;color:#aaa;margin-bottom:16px;letter-spacing:1.5px;">AS SEEN ON</p>\n  <img src="/as-seen-on4.png" alt="Media" style="height:26px;">\n</div>`,
+    };
+    return `<!-- Media Blast Boosters™ Widget Style ${selectedWidgetStyle} -->\n<div class="mbb-trust-widget">\n${s[selectedWidgetStyle]}\n</div>`;
+  };
+
+  // ── Radar data ─────────────────────────────────────────────────────────────
+  const radarChartData = useMemo(() => {
+    if (!competitorData) return [];
+    return ["aiCitation","mediaAuthority","newsVolume","sentimentPositivity","topicLeadership"].map((key,i) => {
+      const names = ["AI Citation","Media Authority","News Volume","Sentiment","Topic Leadership"];
+      const pt = { metric:names[i], [competitorData.userCompany.name]: competitorData.userCompany.scores[key] };
+      competitorData.competitors.forEach(c => { pt[c.name] = c.scores[key]; });
+      return pt;
+    });
+  }, [competitorData]);
+
+  const hasCompanyData = !!(companyName || industry);
+
+  const tabs = [
+    { id:"topics",     icon:<NewsIcon size={15}/>,   label:"Trending Topics"    },
+    { id:"competitor", icon:<BarIcon size={15}/>,    label:"Competitor Analysis" },
+    { id:"widgets",    icon:<ShieldIcon size={15}/>, label:"Trust Assets"       },
+    { id:"pr",         icon:<BriefIcon size={15}/>,  label:"PR Creator"         },
+    { id:"orders",     icon:<CartIcon size={15}/>,   label:"Orders"             },
+  ];
+
+  // ── Reusable field row helper ──────────────────────────────────────────────
+  const Field = ({label, icon, children}) => (
+    <div>
+      <label className="field-label" style={{ display:"flex", alignItems:"center", gap:".35rem" }}>
+        {icon && icon}{label}
+      </label>
+      {children}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
+  return (
+    <div className="mbb-root" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#f1f5f9" }}>
+      <GlobalStyles/>
+
+      {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
+      <header style={{
+        background:"#0b1120", borderBottom:"1px solid #1e2d45",
+        padding:"0 1.5rem", display:"flex", alignItems:"center",
+        gap:"1.25rem", minHeight:"56px", position:"sticky", top:0, zIndex:30,
+        boxShadow:"0 2px 16px rgba(0,0,0,.35)"
+      }}>
+        {/* Logo */}
+        <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexShrink:0 }}>
+          <div style={{ background:"linear-gradient(135deg,#6366f1,#8b5cf6)", borderRadius:".45rem", padding:".38rem", display:"flex" }}>
+            <ZapIcon size={16}/>
+          </div>
+          <span className="font-display" style={{ color:"white", fontWeight:800, fontSize:".95rem", letterSpacing:"-.01em", whiteSpace:"nowrap" }}>
+            Media Blast Boosters<span style={{ color:"#6366f1", fontSize:".7rem", fontWeight:700, marginLeft:".2rem" }}>™</span>
+          </span>
+        </div>
+
+        <div style={{ width:1, height:22, background:"#1e2d45", flexShrink:0 }}/>
+
+        {/* Tab nav */}
+        <nav style={{ display:"flex", gap:".1rem", flex:1, overflowX:"auto" }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+              padding:".42rem .78rem", fontWeight:600, fontSize:".78rem",
+              borderRadius:".35rem", whiteSpace:"nowrap", display:"flex",
+              alignItems:"center", gap:".38rem", border:"none", cursor:"pointer",
+              background: activeTab===t.id ? "rgba(99,102,241,.22)" : "transparent",
+              color: activeTab===t.id ? "#a5b4fc" : "#64748b",
+              transition:"all .15s"
+            }}>
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Company Data button — naked style */}
+        <button onClick={openCompanyData} style={{
+          display:"flex", alignItems:"center", gap:".45rem",
+          padding:".38rem .85rem", background:"transparent",
+          border:"1px solid #2d4060", borderRadius:".45rem",
+          color: hasCompanyData ? "#a5b4fc" : "#475569",
+          cursor:"pointer", fontSize:".78rem", fontWeight:600,
+          transition:"all .2s", flexShrink:0, whiteSpace:"nowrap"
+        }}
+        onMouseOver={e=>{ e.currentTarget.style.background="rgba(99,102,241,.15)"; e.currentTarget.style.borderColor="#6366f1"; e.currentTarget.style.color="#a5b4fc"; }}
+        onMouseOut={e=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor="#2d4060"; e.currentTarget.style.color=hasCompanyData?"#a5b4fc":"#475569"; }}>
+          <BuildingIcon size={14}/>
+          Company Data
+          {hasCompanyData && <span style={{ width:6, height:6, borderRadius:"50%", background:"#34d399", flexShrink:0 }}/>}
+        </button>
+
+        {/* Settings */}
+        <button onClick={()=>setShowSettings(true)} style={{ color:"#475569", background:"none", border:"none", cursor:"pointer", padding:".3rem", display:"flex", flexShrink:0, transition:"color .15s" }}
+          onMouseOver={e=>e.currentTarget.style.color="#a5b4fc"} onMouseOut={e=>e.currentTarget.style.color="#475569"}>
+          <SettingsIcon size={16}/>
+        </button>
+      </header>
+
+      {/* ══ MAIN ════════════════════════════════════════════════════════════ */}
+      <main style={{ flex:1, overflowY:"auto", padding:"1.5rem", maxWidth:"940px", width:"100%", margin:"0 auto" }}>
+
+        {/* No-company nudge */}
+        {!hasCompanyData && dataLoaded && (
+          <div style={{ background:"linear-gradient(135deg,#1e1b4b,#312e81)", border:"1px solid #4338ca", borderRadius:".875rem", padding:"1rem 1.5rem", marginBottom:"1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"1rem", flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+              <div style={{ background:"rgba(99,102,241,.25)", borderRadius:".5rem", padding:".5rem", display:"flex" }}><BuildingIcon size={20}/></div>
+              <div>
+                <p style={{ color:"white", fontWeight:600, fontSize:".9rem", margin:0 }}>Set up your company profile to get started</p>
+                <p style={{ color:"#a5b4fc", fontSize:".78rem", margin:"2px 0 0" }}>AI uses your company data to personalize every output across the dashboard.</p>
+              </div>
+            </div>
+            <button onClick={openCompanyData} className="btn-primary" style={{ flexShrink:0 }}>
+              <BuildingIcon size={15}/> Add Company Data
+            </button>
+          </div>
+        )}
+
+        {/* ── TRENDING TOPICS ─────────────────────────────────────────────── */}
+        {activeTab === "topics" && (
+          <div className="animate-fadein">
+            {/* Header — no button here */}
+            <div style={{ marginBottom:"1.25rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Trending Topics</h2>
+              <p style={{ color:"#64748b", fontSize:".875rem" }}>
+                AI-curated topics for <strong>{industry||"your industry"}</strong>
+                {companyData.services && <span style={{ color:"#94a3b8" }}> · {companyData.services.split(",").slice(0,3).map(s=>s.trim()).join(", ")}{companyData.services.split(",").length>3?"…":""}</span>}
+              </p>
+            </div>
+
+            {isLoading ? (
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"5rem 0", gap:"1rem" }}>
+                <div style={{ width:64, height:64, borderRadius:"50%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center" }}><LoaderIcon size={28}/></div>
+                <p style={{ color:"#64748b", fontWeight:600, fontSize:".95rem" }}>Fetching live {industry||"industry"} articles…</p>
+                <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
+                  <div style={{ background:"#e0e7ff", borderRadius:"99px", height:6, width:160, overflow:"hidden" }}>
+                    <div style={{ background:"linear-gradient(90deg,#4f46e5,#7c3aed)", height:"100%", width:`${Math.min((topicsFetched/12)*100,95)}%`, transition:"width .5s ease", borderRadius:"99px" }}/>
+                  </div>
+                  <span style={{ color:"#6366f1", fontSize:".82rem", fontWeight:700, minWidth:40 }}>{topicsFetched}/12</span>
+                </div>
+                <p style={{ color:"#94a3b8", fontSize:".78rem" }}>{topicsFetched < 6 ? "Loading batch 1…" : "Loading batch 2…"}</p>
+              </div>
+            ) : trendingTopics.length > 0 ? (
+              <>
+                {/* Page indicator */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".85rem" }}>
+                  <span style={{ fontSize:".78rem", color:"#94a3b8", fontWeight:500 }}>
+                    Showing {topicsPage*6+1}–{Math.min(topicsPage*6+6, trendingTopics.length)} of {trendingTopics.length} topics
+                  </span>
+                  <div style={{ display:"flex", gap:".35rem" }}>
+                    {[0,1].filter(p=>p*6<trendingTopics.length).map(p=>(
+                      <button key={p} onClick={()=>setTopicsPage(p)} style={{
+                        width:28, height:28, borderRadius:".35rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".78rem",
+                        background:topicsPage===p?"#4f46e5":"#f1f5f9",
+                        color:topicsPage===p?"white":"#64748b", transition:"all .15s"
+                      }}>{p+1}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Topic cards */}
+                <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
+                  {trendingTopics.slice(topicsPage*6, topicsPage*6+6).map((t,i)=>{
+                    return (
+                    <div key={`${topicsPage}-${i}`} className="topic-card animate-fadein" style={{ animationDelay:`${i*30}ms` }}>
+                      <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginBottom:".6rem" }}>
+                        <div style={{ flex:1 }}>
+                          <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", marginBottom:".35rem" }}>
+                            {t.relevance==="High"&&<span style={{ background:"#fef3c7",color:"#92400e",fontSize:".65rem",fontWeight:700,padding:".15rem .45rem",borderRadius:"99px",whiteSpace:"nowrap",marginTop:"2px" }}>🔥 HIGH</span>}
+                            <h3 style={{ fontSize:".95rem", fontWeight:700, color:"#0f172a", lineHeight:1.4 }}>{t.title}</h3>
+                          </div>
+                          <p style={{ fontSize:".825rem", color:"#64748b", lineHeight:1.6 }}>{t.summary}</p>
+                        </div>
+                        <button onClick={() => window.open(t.url, "_blank", "noopener,noreferrer")} title="Open article" style={{ background:"none", border:"none", cursor:"pointer", color:"#818cf8", flexShrink:0, marginTop:"2px", padding:0 }}><ExternalLinkIcon size={15}/></button>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:".5rem" }}>
+                        <div style={{ display:"flex", gap:".4rem" }}>
+                          <button onClick={() => generateContentIdeas(t)} style={{ background:"#f1f5f9", color:"#475569", fontSize:".75rem", fontWeight:600, padding:".35rem .75rem", borderRadius:".4rem", border:"1px solid #e2e8f0", cursor:"pointer" }}>💡 Content Ideas</button>
+                          <button onClick={() => { setSelectedTopic({...t,selectedIdea:null}); setActiveTab("pr"); showToast("Topic selected!"); }} style={{ background:"linear-gradient(135deg,#4f46e5,#7c3aed)", color:"white", fontSize:".75rem", fontWeight:600, padding:".35rem .75rem", borderRadius:".4rem", border:"none", cursor:"pointer" }}>✍️ Create PR</button>
+                        </div>
+                        <div style={{ display:"flex", gap:"1rem", fontSize:".75rem", color:"#94a3b8" }}>
+                          <span>📰 {t.source}</span><span>📅 {t.date}</span>
+                        </div>
+                      </div>
+                      {showContentIdeas[t.title] && (
+                        <div style={{ marginTop:".75rem", background:"#f8faff", borderRadius:".5rem", padding:".75rem 1rem", border:"1px solid #e0e7ff" }}>
+                          <p style={{ fontSize:".72rem", fontWeight:700, color:"#4338ca", marginBottom:".5rem", letterSpacing:".04em" }}>💡 PRESS RELEASE ANGLES</p>
+                          {contentIdeas[t.title] ? (
+                            <div style={{ display:"flex", flexDirection:"column", gap:".3rem" }}>
+                              {contentIdeas[t.title].map((idea,j) => (
+                                <button key={j} onClick={() => { setSelectedTopic({...t,selectedIdea:idea}); setActiveTab("pr"); showToast("Angle selected!"); }}
+                                  style={{ background:"none", border:"none", textAlign:"left", cursor:"pointer", fontSize:".82rem", color:"#374151", padding:".3rem .4rem", borderRadius:".35rem" }}
+                                  onMouseOver={e => e.currentTarget.style.background="#e0e7ff"} onMouseOut={e => e.currentTarget.style.background="none"}>
+                                  {j+1}. {idea}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ display:"flex", alignItems:"center", gap:".5rem", color:"#94a3b8", fontSize:".8rem" }}><LoaderIcon size={14}/> Generating...</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom pagination */}
+                {trendingTopics.length > 6 && (
+                  <div style={{ display:"flex", justifyContent:"center", gap:".5rem", marginTop:"1.25rem" }}>
+                    <button onClick={() => setTopicsPage(p => Math.max(0,p-1))} disabled={topicsPage===0}
+                      className="btn-secondary" style={{ padding:".45rem .9rem", fontSize:".8rem", opacity:topicsPage===0?.4:1 }}>← Prev</button>
+                    {[0,1].filter(p=>p*6<trendingTopics.length).map(p=>(
+                      <button key={p} onClick={() => setTopicsPage(p)} style={{
+                        width:36, height:36, borderRadius:".4rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".85rem",
+                        background:topicsPage===p?"linear-gradient(135deg,#4f46e5,#7c3aed)":"#f1f5f9",
+                        color:topicsPage===p?"white":"#64748b"
+                      }}>{p+1}</button>
+                    ))}
+                    <button onClick={() => setTopicsPage(p => Math.min(Math.ceil(trendingTopics.length/6)-1,p+1))}
+                      disabled={topicsPage>=Math.ceil(trendingTopics.length/6)-1}
+                      className="btn-secondary" style={{ padding:".45rem .9rem", fontSize:".8rem", opacity:topicsPage>=Math.ceil(trendingTopics.length/6)-1?.4:1 }}>Next →</button>
+                  </div>
+                )}
+
+                {/* Rescan footer — matches Competitor Analysis style */}
+                <div style={{ borderTop:"1px solid #f1f5f9", marginTop:"1.5rem", paddingTop:"1rem", display:"flex", justifyContent:"center" }}>
+                  <button onClick={() => fetchTrendingTopics()} disabled={isLoading}
+                    style={{ display:"flex", alignItems:"center", gap:".5rem", background:"none", border:"none", color:"#64748b", fontSize:".875rem", cursor:"pointer", padding:".5rem 1rem", borderRadius:".5rem", fontWeight:500 }}
+                    onMouseOver={e => e.currentTarget.style.background="#f1f5f9"} onMouseOut={e => e.currentTarget.style.background="none"}>
+                    <SearchIcon size={15}/> Rescan Topics
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="card" style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"4rem 2rem", gap:"1.5rem" }}>
+                {error && <div style={{ background:"#fff1f2", border:"1px solid #fecdd3", borderRadius:".6rem", padding:".75rem 1rem", color:"#be123c", fontSize:".875rem", display:"flex", gap:".5rem", alignItems:"center" }}><AlertIcon size={16}/>{error}</div>}
+                <div style={{ width:80, height:80, borderRadius:"50%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center" }}><NewsIcon size={36}/></div>
+                <div style={{ textAlign:"center" }}>
+                  <p className="font-display" style={{ fontSize:"1.1rem", fontWeight:700, color:"#0f172a", marginBottom:".5rem" }}>Discover What's Trending</p>
+                  <p style={{ color:"#64748b", fontSize:".875rem", maxWidth:"360px" }}>
+                    AI generates 12 relevant trending topics for <strong>{industry || "your industry"}</strong>{companyData.services ? `, tailored to your services` : ""} — ready to turn into press releases.
+                  </p>
+                </div>
+                <button onClick={() => fetchTrendingTopics()} disabled={isLoading} className="btn-primary" style={{ padding:".75rem 2rem" }}>
+                  <ZapIcon size={16}/> Run Analysis
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── COMPETITOR ANALYSIS ─────────────────────────────────────────── */}
+        {activeTab === "competitor" && (
+          <div className="animate-fadein">
+            <div style={{ marginBottom:"1.25rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Competitor Analysis</h2>
+              <p style={{ color:"#64748b", fontSize:".875rem" }}>AI-powered competitive PR benchmarking for <strong>{companyName||"your company"}</strong></p>
+            </div>
+            {!competitorData ? (
+              <div className="card" style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"4rem 2rem", gap:"1.5rem" }}>
+                {marketError && <div style={{ background:"#fff1f2", border:"1px solid #fecdd3", borderRadius:".6rem", padding:".75rem 1rem", color:"#be123c", fontSize:".875rem", display:"flex", gap:".5rem", alignItems:"center" }}><AlertIcon size={16}/>{marketError}</div>}
+                <div style={{ width:80, height:80, borderRadius:"50%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center" }}><BarIcon size={36}/></div>
+                <div style={{ textAlign:"center" }}>
+                  <p className="font-display" style={{ fontSize:"1.1rem", fontWeight:700, color:"#0f172a", marginBottom:".5rem" }}>Discover Your Competitive Position</p>
+                  <p style={{ color:"#64748b", fontSize:".875rem", maxWidth:"360px" }}>AI benchmarks your PR performance against top competitors in {industry||"your industry"}.</p>
+                </div>
+                <button onClick={scanMarket} disabled={isScanning} className="btn-primary" style={{ padding:".75rem 2rem" }}>
+                  {isScanning?<><LoaderIcon size={16}/> Scanning...</>:<><SearchIcon size={16}/> Scan Market</>}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+                <div style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)", borderRadius:"1rem", padding:"1.5rem 1rem", boxShadow:"0 8px 32px rgba(0,0,0,.2)" }}>
+                  <h3 className="font-display" style={{ color:"white", fontSize:"1.05rem", fontWeight:700, marginBottom:"1rem", paddingLeft:".5rem" }}>Competitive PR Performance</h3>
+                  <ResponsiveContainer width="100%" height={360}>
+                    <RadarChart data={radarChartData}>
+                      <PolarGrid stroke="#334155"/>
+                      <PolarAngleAxis dataKey="metric" tick={{ fill:"#94a3b8", fontSize:12 }}/>
+                      <PolarRadiusAxis angle={90} domain={[0,100]} tick={{ fill:"#475569", fontSize:10 }}/>
+                      <Radar name={competitorData.userCompany.name} dataKey={competitorData.userCompany.name} stroke="#818cf8" fill="#818cf8" fillOpacity={0.45} strokeWidth={2.5} isAnimationActive animationDuration={900}/>
+                      {competitorData.competitors.map((c,i) => (
+                        <Radar key={i} name={c.name} dataKey={c.name} stroke={RADAR_COLORS[i+1]} fill={RADAR_COLORS[i+1]} fillOpacity={0.15} strokeWidth={1.5} isAnimationActive animationDuration={900}/>
+                      ))}
+                      <Legend wrapperStyle={{ paddingTop:"12px" }} iconType="circle"/>
+                      <Tooltip contentStyle={{ background:"#1e293b", border:"1px solid #334155", borderRadius:".5rem", color:"#e2e8f0" }}/>
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(195px,1fr))", gap:"1rem" }}>
+                  {competitorData.competitors.map((c,i) => (
+                    <div key={i} className="card" style={{ padding:"1rem 1.1rem" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
+                        <h4 style={{ fontWeight:700, fontSize:".875rem", color:"#0f172a" }}>{c.name}</h4>
+                        {c.trend==="up"?<span style={{ color:"#10b981" }}><TrendUpIcon size={16}/></span>:<span style={{ color:"#ef4444" }}><TrendDownIcon size={16}/></span>}
+                      </div>
+                      <p style={{ fontSize:".78rem", color:"#64748b", lineHeight:1.5 }}>{c.gapAnalysis}</p>
+                      <div style={{ marginTop:".5rem", fontSize:".72rem", fontWeight:600, color:c.trend==="up"?"#10b981":"#ef4444" }}>PR: {c.trend==="up"?"↑ Increasing":"↓ Decreasing"}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="card" style={{ padding:"1.25rem", background:"linear-gradient(135deg,#f0f4ff,#f5f3ff)" }}>
+                  <h3 style={{ fontWeight:700, color:"#1e1b4b", marginBottom:"1rem", display:"flex", alignItems:"center", gap:".5rem", fontSize:"1rem" }}><SparklesIcon size={18}/> Competitive Intelligence</h3>
+                  <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
+                    {competitorData.competitiveIntelligence.map((ins,i) => (
+                      <div key={i} style={{ display:"flex", gap:".75rem", alignItems:"flex-start" }}>
+                        <div style={{ background:"#4f46e5", color:"white", borderRadius:"50%", width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", fontSize:".7rem", fontWeight:700, flexShrink:0, marginTop:"1px" }}>{i+1}</div>
+                        <p style={{ fontSize:".85rem", color:"#374151", lineHeight:1.6 }}>{ins}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={scanMarket} disabled={isScanning} className="btn-secondary" style={{ justifyContent:"center" }}>
+                  {isScanning?<><LoaderIcon size={15}/> Rescanning...</>:<><SearchIcon size={15}/> Rescan Market</>}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TRUST ASSETS ────────────────────────────────────────────────── */}
+        {activeTab === "widgets" && (
+          <div className="animate-fadein">
+            <div style={{ marginBottom:"1.25rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Brand Trust Assets</h2>
+              <p style={{ color:"#64748b", fontSize:".875rem" }}>Professional "As Seen On" widgets — embed on your website for instant credibility.</p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
+              {[1,2,3,4].map(n => {
+                const names={1:"The Minimalist",2:"The Editorial",3:"The Tech Glow",4:"The Classic Wire"};
+                const isActive=selectedWidgetStyle===n;
+                return (
+                  <div key={n} onClick={() => setSelectedWidgetStyle(n)} style={{ background:"white", borderRadius:".875rem", border:`2px solid ${isActive?"#6366f1":"#e2e8f0"}`, padding:"1.1rem", cursor:"pointer", transition:"all .2s", boxShadow:isActive?"0 0 0 4px rgba(99,102,241,.1)":"0 1px 3px rgba(0,0,0,.05)" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".75rem" }}>
+                      <span style={{ fontWeight:700, fontSize:".85rem", color:isActive?"#4338ca":"#1e293b" }}>{names[n]}</span>
+                      {isActive&&<span style={{ color:"#6366f1" }}><CheckIcon size={16}/></span>}
+                    </div>
+                    <div style={{ borderRadius:".5rem", border:"1px solid #f1f5f9", background:"#f8fafc", padding:"1rem", marginBottom:".75rem", minHeight:"70px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {n===1&&<div style={{textAlign:"center"}}><p style={{fontSize:"9px",color:"#999",letterSpacing:"2px",marginBottom:"7px"}}>AS SEEN ON</p><div style={{background:"#e2e8f0",height:"20px",borderRadius:"3px",display:"flex",alignItems:"center",justifyContent:"center",padding:"0 10px"}}><span style={{fontSize:"8px",color:"#94a3b8"}}>Yahoo Finance · MSN · Business Insider</span></div></div>}
+                      {n===2&&<div style={{textAlign:"center",fontFamily:"Georgia,serif"}}><p style={{fontSize:"11px",color:"#555",marginBottom:"7px",fontStyle:"italic"}}>Featured In</p><div style={{background:"#f5f5f5",height:"20px",borderRadius:"3px",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:"8px",color:"#777"}}>Premium Media Outlets</span></div></div>}
+                      {n===3&&<div style={{textAlign:"center",background:"#0f172a",borderRadius:"7px",padding:"9px"}}><p style={{fontSize:"9px",color:"#818cf8",letterSpacing:"2px",marginBottom:"7px",fontWeight:700}}>FEATURED IN</p><div style={{background:"#1e293b",height:"18px",borderRadius:"3px",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:"8px",color:"#475569"}}>Top News Networks</span></div></div>}
+                      {n===4&&<div style={{textAlign:"center",background:"white",borderRadius:"5px",boxShadow:"0 2px 8px rgba(0,0,0,.08)",padding:"9px"}}><p style={{fontSize:"9px",color:"#aaa",letterSpacing:"1px",marginBottom:"7px"}}>AS SEEN ON</p><div style={{background:"#f9f9f9",height:"18px",borderRadius:"3px",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:"8px",color:"#999"}}>National Outlets</span></div></div>}
+                    </div>
+                    <div style={{ display:"flex", gap:".4rem" }}>
+                      <button onClick={e => { e.stopPropagation(); setWidgetResolution("starter"); }} style={{ flex:1, padding:".35rem", border:"none", borderRadius:".35rem", background:widgetResolution==="starter"?"#4f46e5":"#f1f5f9", color:widgetResolution==="starter"?"white":"#475569", border:"none", cursor:"pointer", fontWeight:600 }}>Starter (3)</button>
+                      <button onClick={e => { e.stopPropagation(); if(isPremiumUnlocked) setWidgetResolution("premium"); }} disabled={!isPremiumUnlocked} style={{ flex:1, padding:".35rem", border:"none", borderRadius:".35rem", background:widgetResolution==="premium"&&isPremiumUnlocked?"#4f46e5":"#f1f5f9", color:widgetResolution==="premium"&&isPremiumUnlocked?"white":"#94a3b8", border:"none", cursor:isPremiumUnlocked?"pointer":"not-allowed", fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:".2rem" }}>
+                        {!isPremiumUnlocked&&<LockIcon size={11}/>} Premium
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ background:"#0f172a", borderRadius:"1rem", padding:"1.25rem", marginBottom:"1.25rem" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".75rem" }}>
+                <h3 style={{ color:"white", fontWeight:700 }}>Embed Code</h3>
+                <button onClick={() => { navigator.clipboard.writeText(getWidgetEmbedCode()); showToast("Embed code copied!"); }} className="btn-primary" style={{ padding:".4rem .9rem", fontSize:".78rem" }}><CopyIcon size={14}/> Copy Code</button>
+              </div>
+              <pre style={{ background:"#1e293b", color:"#4ade80", padding:"1rem", borderRadius:".6rem", fontSize:".72rem", overflowX:"auto", lineHeight:1.6, maxHeight:"200px", overflowY:"auto", margin:0 }}><code>{getWidgetEmbedCode()}</code></pre>
+            </div>
+            <div className="card" style={{ padding:"1.25rem", borderStyle:"dashed" }}>
+              <h3 style={{ fontWeight:700, marginBottom:".25rem", display:"flex", alignItems:"center", gap:".5rem", fontSize:"1rem" }}><ShieldIcon size={18}/> Widget Health Check</h3>
+              <p style={{ fontSize:".82rem", color:"#64748b", marginBottom:"1rem" }}>Verify your widget is live on your website</p>
+              <div style={{ display:"flex", gap:".75rem", marginBottom:"1rem" }}>
+                <input type="url" value={verifyUrl} onChange={e => setVerifyUrl(e.target.value)} placeholder="https://yourwebsite.com" className="field-input" style={{ flex:1 }}/>
+                <button onClick={async () => { setIsVerifying(true); setVerificationStatus(null); await new Promise(r => setTimeout(r,1800)); setVerificationStatus({ blocked:true }); setIsVerifying(false); }} disabled={isVerifying||!verifyUrl.trim()} className="btn-primary" style={{ whiteSpace:"nowrap" }}>
+                  {isVerifying?<><LoaderIcon size={15}/> Checking...</>:<><SearchIcon size={15}/> Verify</>}
+                </button>
+              </div>
+              {verificationStatus?.blocked&&!verificationStatus?.found&&(
+                <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:".5rem", padding:".875rem 1rem" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:".5rem", color:"#92400e", fontWeight:600, marginBottom:".5rem" }}><AlertIcon size={16}/> Automatic Verification Blocked</div>
+                  <p style={{ fontSize:".8rem", color:"#78350f", marginBottom:".75rem" }}>Some sites block automated checks. Confirm manually.</p>
+                  <button onClick={() => { setVerificationStatus({found:true}); showToast("Widget confirmed!"); }} style={{ background:"#d97706", color:"white", border:"none", borderRadius:".4rem", padding:".4rem .9rem", fontSize:".8rem", fontWeight:600, cursor:"pointer" }}>✓ Manually Confirm</button>
+                </div>
+              )}
+              {verificationStatus?.found&&<div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:".5rem", padding:".875rem 1rem", display:"flex", alignItems:"center", gap:".5rem", fontSize:".78rem", color:"#166534", fontWeight:500 }}><CheckIcon size={16}/> Widget Live & Verified ✓</div>}
+            </div>
+          </div>
+        )}
+
+        {/* ── PR CREATOR ──────────────────────────────────────────────────── */}
+        {activeTab === "pr" && (
+          <div className="animate-fadein">
+            {showGeneratedView && generatedPR ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+                <div className="card" style={{ padding:"1.5rem" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap", gap:".75rem" }}>
+                    <h2 className="font-display" style={{ fontSize:"1.2rem", fontWeight:700, color:"#0f172a" }}>Generated Press Release</h2>
+                    <button onClick={() => setShowGeneratedView(false)} className="btn-secondary" style={{ fontSize:".8rem" }}><BackIcon size={14}/> Back to Edit</button>
+                  </div>
+                  <div className="prose" style={{ maxWidth:"none", padding:"1rem", background:"#f8fafc", borderRadius:".6rem", border:"1px solid #e2e8f0" }} dangerouslySetInnerHTML={{ __html:generatedPR }}/>
+                  <div style={{ display:"flex", gap:".75rem", marginTop:"1.25rem", paddingTop:"1rem", borderTop:"1px solid #f1f5f9", flexWrap:"wrap" }}>
+                    <button onClick={() => { navigator.clipboard.writeText(generatedPR.replace(/<[^>]*>/g,"")); showToast("Copied!"); }} className="btn-secondary"><CopyIcon size={15}/> Copy Text</button>
+                    <button onClick={() => { navigator.clipboard.writeText(generatedPR); showToast("HTML copied!"); }} className="btn-secondary"><CopyIcon size={15}/> Copy HTML</button>
+                    <button onClick={() => setShowRefineDialog(true)} disabled={refinementCount>=5} className="btn-primary" style={{ marginLeft:"auto" }}>
+                      <SparklesIcon size={15}/> Refine with AI {refinementCount>0&&`(${refinementCount}/5)`}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ background:"linear-gradient(135deg,#f0f4ff,#faf5ff)", border:"2px solid #c7d2fe", borderRadius:"1rem", padding:"1.5rem" }}>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:"1.5rem", alignItems:"center" }}>
+                    <div style={{ flex:1, minWidth:"200px" }}>
+                      <h3 className="font-display" style={{ fontSize:"1.25rem", fontWeight:800, color:"#1e1b4b", marginBottom:".5rem" }}>Ready to Launch Your PR?</h3>
+                      <p style={{ color:"#4338ca", fontSize:".875rem", marginBottom:".75rem" }}>Get published across hundreds of top outlets, reaching millions monthly.</p>
+                      {[["🏆","Massive Social Proof"],["🎯","Attract Potential Customers"],["📈","Top Rankings on Google"],["🔗","Valuable SEO Backlinks"]].map(([e,t])=>(
+                        <div key={t} style={{ display:"flex", alignItems:"center", gap:".5rem", marginBottom:".3rem", fontSize:".8rem", color:"#374151" }}><span>{e}</span>{t}</div>
+                      ))}
+                    </div>
+                    <div style={{ background:"white", borderRadius:".875rem", padding:"1.25rem", border:"2px solid #c7d2fe", minWidth:"195px" }}>
+                      {prFormData.wordCount==="350"&&(<><div style={{fontSize:".72rem",fontWeight:700,color:"#6366f1",letterSpacing:".08em",marginBottom:".35rem"}}>STARTER</div><div style={{fontSize:"2rem",fontWeight:800,color:"#0f172a",lineHeight:1,marginBottom:".75rem"}}>$2.49<span style={{fontSize:".9rem",color:"#94a3b8",fontWeight:500}}>/outlet</span></div>{["200 News Outlets","350 Words","2.2M Monthly Readers"].map(f=><div key={f} style={{fontSize:".78rem",color:"#475569",marginBottom:".3rem",display:"flex",gap:".4rem"}}><CheckIcon size={13}/>{f}</div>)}<button className="btn-primary" style={{width:"100%",justifyContent:"center",marginTop:".75rem"}}>🚀 Order & Launch</button></>)}
+                      {prFormData.wordCount==="500"&&(<><div style={{display:"flex",gap:".4rem",alignItems:"center",marginBottom:".35rem"}}><span style={{fontSize:".72rem",fontWeight:700,color:"#6366f1",letterSpacing:".08em"}}>STANDARD</span><span style={{background:"#fef08a",color:"#713f12",fontSize:".65rem",fontWeight:700,padding:".15rem .45rem",borderRadius:"99px"}}>POPULAR</span></div><div style={{fontSize:"2rem",fontWeight:800,color:"#0f172a",lineHeight:1,marginBottom:".75rem"}}>$2.49<span style={{fontSize:".9rem",color:"#94a3b8",fontWeight:500}}>/outlet</span></div>{["300 News Outlets","500 Words","26.4M Monthly Readers"].map(f=><div key={f} style={{fontSize:".78rem",color:"#475569",marginBottom:".3rem",display:"flex",gap:".4rem"}}><CheckIcon size={13}/>{f}</div>)}<button className="btn-primary" style={{width:"100%",justifyContent:"center",marginTop:".75rem"}}>🚀 Order & Launch</button></>)}
+                      {prFormData.wordCount==="1000"&&(<><div style={{fontSize:".72rem",fontWeight:700,color:"#6366f1",letterSpacing:".08em",marginBottom:".35rem"}}>PREMIUM</div><div style={{fontSize:"2rem",fontWeight:800,color:"#0f172a",lineHeight:1,marginBottom:".75rem"}}>$2.21<span style={{fontSize:".9rem",color:"#94a3b8",fontWeight:500}}>/outlet</span></div>{["450 News Outlets","1000 Words","224.5M Monthly Readers"].map(f=><div key={f} style={{fontSize:".78rem",color:"#475569",marginBottom:".3rem",display:"flex",gap:".4rem"}}><CheckIcon size={13}/>{f}</div>)}<button className="btn-primary" style={{width:"100%",justifyContent:"center",marginTop:".75rem"}}>🚀 Order & Launch</button></>)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom:"1.25rem" }}>
+                  <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Press Release Creator</h2>
+                  <p style={{ color:"#64748b", fontSize:".875rem" }}>Fill in the details and AI will write a professional, publish-ready press release.</p>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:"1.1rem" }}>
+                  <div>
+                    <label className="field-label">Trending Topic Reference <span style={{ color:"#94a3b8", fontWeight:400 }}>(optional)</span></label>
+                    {selectedTopic ? (
+                      <div style={{ background:"#f0f4ff", border:"1px solid #c7d2fe", borderRadius:".6rem", padding:".875rem 1rem" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                          <div>
+                            <p style={{ fontWeight:600, color:"#3730a3", fontSize:".875rem", marginBottom:".25rem" }}>{selectedTopic.title}</p>
+                            <p style={{ fontSize:".75rem", color:"#6366f1" }}>Source: {selectedTopic.source}</p>
+                            {selectedTopic.selectedIdea&&<p style={{ fontSize:".75rem", color:"#4338ca", marginTop:".35rem", background:"#e0e7ff", padding:".25rem .5rem", borderRadius:".35rem", display:"inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
+                          </div>
+                          <button onClick={() => setSelectedTopic(null)} style={{ fontSize:".75rem", color:"#6366f1", fontWeight:600, background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", marginLeft:"1rem" }}>Clear</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background:"#f8fafc", border:"1px dashed #cbd5e1", borderRadius:".6rem", padding:".875rem", textAlign:"center" }}>
+                        <p style={{ color:"#94a3b8", fontSize:".8rem" }}>No topic selected — <button onClick={() => setActiveTab("topics")} style={{ background:"none", border:"none", color:"#6366f1", cursor:"pointer", fontWeight:600, fontSize:".8rem" }}>browse Trending Topics →</button></p>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem" }}>
+                    {[["Company Name",companyName],["Quote Attribution",quoteAttribution]].map(([lbl,val])=>(
+                      <div key={lbl}>
+                        <label className="field-label">{lbl}</label>
+                        <div style={{ display:"flex", alignItems:"center", gap:".5rem" }}>
+                          <input value={val} disabled className="field-input" style={{ background:"#f8fafc", color:val?"#475569":"#c0c9d4" }}/>
+                          {!val&&<button onClick={openCompanyData} style={{ fontSize:".7rem", color:"#6366f1", background:"none", border:"none", cursor:"pointer", fontWeight:600, whiteSpace:"nowrap" }}>Set →</button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem" }}>
+                    <div>
+                      <label className="field-label">Main Focus</label>
+                      <div style={{ position:"relative" }}>
+                        <button type="button" onClick={() => { setShowFocusDropdown(p => !p); setShowThemeDropdown(false); }} className="field-input" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+                          <span style={{ display:"flex", alignItems:"center", gap:".5rem", fontWeight:500 }}>{FOCUS_OPTIONS.find(f=>f.value===prFormData.mainFocus)?.emoji} {prFormData.mainFocus}</span>
+                          <span style={{ color:"#94a3b8", fontSize:".7rem" }}>▼</span>
+                        </button>
+                        {showFocusDropdown&&<div style={{ position:"absolute", top:"100%", left:0, right:0, background:"white", border:"1px solid #e2e8f0", borderRadius:".5rem", boxShadow:"0 8px 24px rgba(0,0,0,.12)", zIndex:20, overflow:"hidden", marginTop:"4px" }}>
+                          {FOCUS_OPTIONS.map(f=><button key={f.value} type="button" onClick={() => { setPrFormData(p => ({ ...p, mainFocus: f.value })); setShowFocusDropdown(false); }} style={{ width:"100%", textAlign:"left", padding:".6rem .875rem", background:prFormData.mainFocus===f.value?"#f0f4ff":"white", border:"none", cursor:"pointer", display:"flex", gap:".6rem", alignItems:"flex-start" }}><span>{f.emoji}</span><div><p style={{ fontWeight:600, fontSize:".82rem", color:"#1e293b", marginBottom:"2px" }}>{f.value}</p><p style={{ fontSize:".72rem", color:"#94a3b8" }}>{f.desc}</p></div></button>)}
+                        </div>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="field-label">Theme & Style</label>
+                      <div style={{ position:"relative" }}>
+                        <button type="button" onClick={() => { setShowThemeDropdown(p => !p); setShowFocusDropdown(false); }} className="field-input" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+                          <span style={{ display:"flex", alignItems:"center", gap:".5rem", fontWeight:500 }}>{THEME_OPTIONS.find(t=>t.value===prFormData.theme)?.emoji} {THEME_OPTIONS.find(t=>t.value===prFormData.theme)?.label}</span>
+                          <span style={{ color:"#94a3b8", fontSize:".7rem" }}>▼</span>
+                        </button>
+                        {showThemeDropdown&&<div style={{ position:"absolute", top:"100%", left:0, right:0, background:"white", border:"1px solid #e2e8f0", borderRadius:".5rem", boxShadow:"0 8px 24px rgba(0,0,0,.12)", zIndex:20, overflow:"hidden", marginTop:"4px" }}>
+                          {THEME_OPTIONS.map(t=><button key={t.value} type="button" onClick={() => { setPrFormData(p => ({ ...p, theme: t.value })); setShowThemeDropdown(false); }} style={{ width:"100%", textAlign:"left", padding:".6rem .875rem", background:prFormData.theme===t.value?"#f0f4ff":"white", border:"none", cursor:"pointer", display:"flex", gap:".6rem", alignItems:"flex-start" }}><span>{t.emoji}</span><div><p style={{ fontWeight:600, fontSize:".82rem", color:"#1e293b", marginBottom:"2px" }}>{t.label}</p><p style={{ fontSize:".72rem", color:"#94a3b8" }}>{t.desc}</p></div></button>)}
+                        </div>}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="field-label">Article Length</label>
+                    <select value={prFormData.wordCount} onChange={e => setPrFormData(p => ({ ...p, wordCount: e.target.value }))} className="field-input">
+                      <option value="350">Brief Insight — 350 Words</option>
+                      <option value="500">Standard Article — 500 Words</option>
+                      <option value="1000">In-Depth Exploration — 1000 Words</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label">Target Keywords <span style={{ color:"#94a3b8", fontWeight:400 }}>(up to 2)</span></label>
+                    <KeywordTagInput keywords={prFormData.keywords} onChange={kw => setPrFormData(p => ({ ...p, keywords: kw }))} maxKeywords={2}/>
+                  </div>
+                  <div>
+                    <label className="field-label">What is the Press Release About? <span style={{ color:"#ef4444" }}>*</span></label>
+                    <textarea value={prFormData.about} onChange={e => setPrFormData(p => ({ ...p, about: e.target.value }))} placeholder="Describe the news, announcement, or story in detail..." className="field-input" style={{ height:"150px", resize:"vertical", lineHeight:1.6 }}/>
+                  </div>
+                  <div>
+                    <label className="field-label">Key Quote <span style={{ color:"#ef4444" }}>*</span></label>
+                    <textarea value={prFormData.quote} onChange={e => setPrFormData(p => ({ ...p, quote: e.target.value }))} placeholder="Enter a compelling quote from a company spokesperson..." className="field-input" style={{ height:"80px", resize:"vertical", lineHeight:1.6 }}/>
+                  </div>
+                  <details>
+                    <summary style={{ fontSize:".82rem", fontWeight:600, color:"#64748b", cursor:"pointer", padding:".5rem 0", borderTop:"1px solid #f1f5f9", userSelect:"none" }}>＋ Optional Media (Image, Video, Map)</summary>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".75rem" }}>
+                      <div>
+                        <label className="field-label">Featured Image</label>
+                        <div className="field-input" style={{ display:"flex", alignItems:"center", gap:".5rem" }}><UploadIcon size={14}/><input type="file" accept="image/*" onChange={e => { const f=e.target.files?.[0]; if(f){setPrFormData(p => ({ ...p, featuredImage: f }));showToast("Image added");}}} style={{ flex:1, fontSize:".78rem", border:"none", outline:"none" }}/>{prFormData.featuredImage&&<CheckIcon size={14}/>}</div>
+                      </div>
+                      <div>
+                        <label className="field-label">YouTube URL</label>
+                        <input type="url" value={prFormData.videoUrl} onChange={e => setPrFormData(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://youtube.com/..." className="field-input"/>
+                      </div>
+                    </div>
+                    <div style={{ marginTop:".75rem" }}>
+                      <label className="field-label">Google Maps Embed</label>
+                      <textarea value={prFormData.mapsEmbed} onChange={e => setPrFormData(p => ({ ...p, mapsEmbed: e.target.value }))} placeholder="Paste Google Maps embed code here..." className="field-input" style={{ height:"70px", resize:"vertical" }}/>
+                    </div>
+                  </details>
+                  <div style={{ display:"flex", gap:".75rem", paddingTop:".25rem" }}>
+                    <button onClick={generatePressRelease} disabled={isLoading} className="btn-primary" style={{ flex:1, justifyContent:"center", padding:".8rem" }}>
+                      {isLoading?<><LoaderIcon size={16}/> Generating...</>:<><SparklesIcon size={16}/> Generate Press Release</>}
+                    </button>
+                    <button onClick={() => { setPrFormData({ about:"", quote:"", keywords:[], wordCount:"500", mainFocus:"Company News", theme:"thought-provoking", videoUrl:"", mapsEmbed:"", featuredImage:null }); setSelectedTopic(null); showToast("Form cleared"); }} className="btn-secondary">Clear</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ORDERS ──────────────────────────────────────────────────────── */}
+        {activeTab === "orders" && (
+          <div className="animate-fadein">
+            <div style={{ marginBottom:"1.25rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>PR Orders</h2>
+              <p style={{ color:"#64748b", fontSize:".875rem" }}>Your press release distribution orders</p>
+            </div>
+            {showThankYou&&<div style={{ background:"linear-gradient(135deg,#f0fdf4,#dcfce7)", border:"1px solid #86efac", borderRadius:".875rem", padding:"1.25rem", marginBottom:"1.25rem" }}><h3 style={{ fontWeight:700, color:"#166534", marginBottom:".35rem" }}>🎉 Order Placed!</h3><p style={{ fontSize:".875rem", color:"#15803d" }}>Your press release has been submitted for distribution.</p></div>}
+            {orders.length>0 ? (
+              <div className="card" style={{ overflow:"hidden" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:".875rem" }}>
+                  <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>
+                    {["PR Title","Package","Price","Date",""].map(h=><th key={h} style={{ padding:".75rem 1rem", textAlign:"left", fontWeight:600, color:"#64748b", fontSize:".78rem", letterSpacing:".04em", textTransform:"uppercase" }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>{orders.map(o=><tr key={o.id} style={{ borderBottom:"1px solid #f1f5f9" }}>
+                    <td style={{ padding:".875rem 1rem", fontWeight:500, color:"#0f172a", maxWidth:"200px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.prTitle}</td>
+                    <td style={{ padding:".875rem 1rem", color:"#475569" }}>{o.productName}</td>
+                    <td style={{ padding:".875rem 1rem" }}><span style={{ background:"#f0fdf4", color:"#166534", fontWeight:600, padding:".2rem .6rem", borderRadius:"99px", fontSize:".78rem" }}>{o.price}</span></td>
+                    <td style={{ padding:".875rem 1rem", color:"#94a3b8", fontSize:".82rem" }}>{o.date}</td>
+                    <td style={{ padding:".875rem 1rem" }}><button onClick={() => setSelectedOrder(o)} style={{ color:"#6366f1", fontSize:".78rem", fontWeight:600, background:"none", border:"1px solid #c7d2fe", borderRadius:".35rem", padding:".25rem .6rem", cursor:"pointer" }}>View</button></td>
+                  </tr>)}</tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"5rem 0", gap:"1rem" }}>
+                <div style={{ width:80, height:80, borderRadius:"50%", background:"#f1f5f9", display:"flex", alignItems:"center", justifyContent:"center" }}><CartIcon size={36}/></div>
+                <div style={{ textAlign:"center" }}>
+                  <p style={{ fontWeight:600, color:"#334155", marginBottom:".35rem" }}>No orders yet</p>
+                  <p style={{ color:"#94a3b8", fontSize:".875rem" }}>Generate a press release and distribute it.</p>
+                </div>
+                <button onClick={() => setActiveTab("pr")} className="btn-primary"><BriefIcon size={15}/> Create a Press Release</button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* ══ COMPANY DATA MODAL ═══════════════════════════════════════════════ */}
+      {showCompanyData && (
+        <div className="modal-backdrop" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:"1rem" }}
+          onClick={e => { if(e.target===e.currentTarget) setShowCompanyData(false); }}>
+          <div className="modal-panel card" style={{ maxWidth:"580px", width:"100%", maxHeight:"92vh", overflowY:"auto", padding:0, borderRadius:"1rem" }}>
+
+            {/* Modal header */}
+            <div style={{ background:"linear-gradient(135deg,#0b1120,#1e1b4b)", padding:"1.15rem 1.5rem", borderRadius:"1rem 1rem 0 0", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+                <div style={{ background:"rgba(99,102,241,.3)", borderRadius:".45rem", padding:".42rem", display:"flex" }}><BuildingIcon size={17}/></div>
+                <div>
+                  <h2 className="font-display" style={{ color:"white", fontWeight:800, fontSize:"1.05rem", margin:0 }}>Company Data</h2>
+                  <p style={{ color:"#818cf8", fontSize:".72rem", margin:"2px 0 0" }}>Powers all AI features across the dashboard</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCompanyData(false)} style={{ color:"#64748b", background:"none", border:"none", cursor:"pointer" }}><XIcon size={19}/></button>
+            </div>
+
+            {/* Mode selector */}
+            <div style={{ padding:"1.15rem 1.5rem 0" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.15rem" }}>
+                <button onClick={() => setCdMode("ai")} className={`cd-option ${cdMode==="ai"?"selected":""}`}>
+                  <div style={{ display:"flex", alignItems:"center", gap:".55rem", marginBottom:".4rem" }}>
+                    <span style={{ fontSize:"1.2rem" }}>🤖</span>
+                    <span style={{ fontWeight:700, color:cdMode==="ai"?"#4338ca":"#1e293b", fontSize:".875rem" }}>AI Company Data</span>
+                  </div>
+                  <p style={{ fontSize:".77rem", color:"#64748b", margin:0, lineHeight:1.5 }}>Enter your website URL — AI crawls it and autofills all fields automatically.</p>
+                </button>
+                <button onClick={() => setCdMode("manual")} className={`cd-option ${cdMode==="manual"?"selected":""}`}>
+                  <div style={{ display:"flex", alignItems:"center", gap:".55rem", marginBottom:".4rem" }}>
+                    <span style={{ fontSize:"1.2rem" }}>✍️</span>
+                    <span style={{ fontWeight:700, color:cdMode==="manual"?"#4338ca":"#1e293b", fontSize:".875rem" }}>Manual Entry</span>
+                  </div>
+                  <p style={{ fontSize:".77rem", color:"#64748b", margin:0, lineHeight:1.5 }}>Fill out your company details directly for use across all AI features.</p>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ height:1, background:"#f1f5f9", margin:"0 1.5rem" }}/>
+
+            {/* ── AI CRAWL ── */}
+            {cdMode === "ai" && (
+              <div style={{ padding:"1.15rem 1.5rem" }}>
+                <div style={{ background:"#f0f4ff", border:"1px solid #c7d2fe", borderRadius:".75rem", padding:".875rem 1.1rem", marginBottom:"1.15rem" }}>
+                  <p style={{ fontSize:".82rem", color:"#3730a3", fontWeight:500, lineHeight:1.6, margin:0 }}>
+                    🤖 <strong>Gemini AI</strong> will visit up to <strong>15 pages</strong> of your website — prioritising <em>Home, About, Services</em> and <em>Contact</em> — and extract all company data in one pass.
+                  </p>
+                </div>
+                {/* Source type selector */}
+                <div style={{ display:"flex", gap:".5rem", marginBottom:".85rem", background:"#f1f5f9", borderRadius:".5rem", padding:".25rem" }}>
+                  {[
+                    { key:"website", label:"🌐 Website URL",      placeholder:"https://yourcompany.com"          },
+                    { key:"google",  label:"📍 Google Profile",   placeholder:"https://g.page/your-business"     },
+                    { key:"summary", label:"📄 Summary File URL", placeholder:"https://yoursite.com/summary.txt" },
+                  ].map(opt => (
+                    <button key={opt.key} onClick={() => { setCrawlSourceType(opt.key); setAiCrawlUrl(""); setCrawlError(null); }}
+                      style={{ flex:1, padding:".4rem .5rem", border:"none", borderRadius:".35rem", fontSize:".75rem", fontWeight:600, cursor:"pointer", transition:"all .15s",
+                        background: crawlSourceType===opt.key ? "white" : "transparent",
+                        color:      crawlSourceType===opt.key ? "#4338ca" : "#64748b",
+                        boxShadow:  crawlSourceType===opt.key ? "0 1px 4px rgba(0,0,0,.1)" : "none",
+                      }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dynamic URL input */}
+                {[
+                  { key:"website", label:"Website URL",      ph:"https://yourcompany.com"          },
+                  { key:"google",  label:"Google Profile URL", ph:"https://g.page/your-business"     },
+                  { key:"summary", label:"Summary File URL", ph:"https://yoursite.com/summary.txt" },
+                ].map(opt => crawlSourceType===opt.key && (
+                  <div key={opt.key}>
+                    <label className="field-label">{opt.label}</label>
+                    <div style={{ display:"flex", gap:".75rem", marginBottom:"1rem" }}>
+                      <input type="url" value={aiCrawlUrl} onChange={e => setAiCrawlUrl(e.target.value)}
+                        onKeyDown={e => e.key==="Enter"&&!isCrawling&&crawlWebsite()}
+                        placeholder={opt.ph} className="field-input" style={{ flex:1 }}/>
+                      <button onClick={crawlWebsite} disabled={isCrawling||!aiCrawlUrl.trim()} className="btn-primary" style={{ flexShrink:0 }}>
+                        {isCrawling?<><LoaderIcon size={15}/> Crawling...</>:<><GlobeIcon size={15}/> Extract Data</>}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {crawlError && (
+                  <div style={{ background:"#fff1f2", border:"1px solid #fecdd3", borderRadius:".5rem", padding:".75rem 1rem", display:"flex", gap:".5rem", alignItems:"center", color:"#be123c", fontSize:".82rem", marginBottom:"1rem" }}>
+                    <AlertIcon size={15}/> {crawlError}
+                    <button onClick={() => setCdMode("manual")} style={{ marginLeft:"auto", color:"#be123c", fontWeight:600, background:"none", border:"none", cursor:"pointer", fontSize:".82rem", whiteSpace:"nowrap" }}>Enter manually →</button>
+                  </div>
+                )}
+
+                {isCrawling && (
+                  <div style={{ background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:".75rem", padding:"1rem", marginBottom:".5rem" }}>
+                    {/* Status line */}
+                    <div style={{ display:"flex", alignItems:"center", gap:".6rem", marginBottom:".85rem" }}>
+                      <LoaderIcon size={15}/>
+                      <span style={{ fontSize:".8rem", fontWeight:600, color:"#475569" }}>{crawlStatus || "Initializing…"}</span>
+                    </div>
+                    {/* Page log */}
+                    {crawlPages.length > 0 && (
+                      <div style={{ display:"flex", flexDirection:"column", gap:".3rem", maxHeight:"160px", overflowY:"auto" }}>
+                        {crawlPages.map((p, i) => (
+                          <div key={i} style={{ display:"flex", alignItems:"center", gap:".5rem", fontSize:".76rem" }}>
+                            {p.status === "loading" && <LoaderIcon size={12}/>}
+                            {p.status === "ok"      && <span style={{ color:"#10b981", fontWeight:700 }}>✓</span>}
+                            {p.status === "skip"    && <span style={{ color:"#94a3b8" }}>–</span>}
+                            <span style={{ color: p.status==="ok" ? "#374151" : p.status==="skip" ? "#94a3b8" : "#6366f1", fontWeight: p.status==="ok" ? 600 : 400 }}>
+                              {p.label} <span style={{ color:"#cbd5e1", fontWeight:400 }}>({p.path})</span>
+                            </span>
+                            {p.status === "ok"   && <span style={{ marginLeft:"auto", color:"#10b981", fontSize:".7rem", fontWeight:600 }}>Fetched</span>}
+                            {p.status === "skip" && <span style={{ marginLeft:"auto", color:"#94a3b8", fontSize:".7rem" }}>Not found</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!isCrawling && crawlPages.length > 0 && !crawlError && (
+                  <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:".5rem", padding:".6rem .875rem", display:"flex", alignItems:"center", gap:".5rem", fontSize:".78rem", color:"#166534", fontWeight:500, marginBottom:".5rem" }}>
+                    <CheckIcon size={13}/>
+                    Scanned {crawlPages.filter(p=>p.status==="ok").length} of {crawlPages.length} pages — data extracted below.
+                  </div>
+                )}
+
+                {!isCrawling && crawlPages.length === 0 && !crawlError && (
+                  <p style={{ color:"#94a3b8", fontSize:".78rem", textAlign:"center" }}>After extraction, you'll switch to review mode to confirm and save your data.</p>
+                )}
+              </div>
+            )}
+
+            {/* ── MANUAL FORM ── */}
+            {cdMode === "manual" && (
+              <div style={{ padding:"1.15rem 1.5rem", display:"flex", flexDirection:"column", gap:".9rem" }}>
+                <div>
+                  <p style={{ fontSize:".7rem", fontWeight:700, color:"#6366f1", letterSpacing:".08em", marginBottom:".7rem" }}>COMPANY INFO</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem", marginBottom:".7rem" }}>
+                    <div>
+                      <label className="field-label">Company Name <span style={{ color:"#ef4444" }}>*</span></label>
+                      <input value={cdDraft.name} onChange={e => setCdDraft(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Acme Corp" className="field-input"/>
+                    </div>
+                    <div>
+                      <label className="field-label">Industry <span style={{ color:"#ef4444" }}>*</span></label>
+                      <input value={cdDraft.industry} onChange={e => setCdDraft(p => ({ ...p, industry: e.target.value }))} placeholder="e.g. Digital Marketing" className="field-input"/>
+                    </div>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
+                    <div>
+                      <label className="field-label">Website URL</label>
+                      <input type="url" value={cdDraft.websiteUrl} onChange={e => setCdDraft(p => ({ ...p, websiteUrl: e.target.value }))} placeholder="https://yoursite.com" className="field-input"/>
+                    </div>
+                    <div>
+                      <label className="field-label">Quote Attribution</label>
+                      <input value={cdDraft.quoteAttribution} onChange={e => setCdDraft(p => ({ ...p, quoteAttribution: e.target.value }))} placeholder="Jane Doe — CEO, Acme Corp" className="field-input"/>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="field-label">About Company</label>
+                  <textarea value={cdDraft.about} onChange={e => setCdDraft(p => ({ ...p, about: e.target.value }))} placeholder="Brief company description, mission, products or services — AI uses this in press releases..." className="field-input" style={{ height:"80px", resize:"vertical", lineHeight:1.6 }}/>
+                </div>
+                <div>
+                  <label className="field-label">List of Services</label>
+                  <textarea value={cdDraft.services||""} onChange={e => setCdDraft(p => ({ ...p, services: e.target.value }))} placeholder="e.g. SEO Optimization, Content Marketing, Social Media Management, PPC Advertising…" className="field-input" style={{ height:"70px", resize:"vertical", lineHeight:1.6 }}/>
+                </div>
+                <div>
+                  <p style={{ fontSize:".7rem", fontWeight:700, color:"#6366f1", letterSpacing:".08em", marginBottom:".7rem" }}>CONTACT DATA</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
+                    <div>
+                      <label className="field-label" style={{ display:"flex", alignItems:"center", gap:".35rem" }}><MapPinIcon size={13}/> Address</label>
+                      <input value={cdDraft.address} onChange={e => setCdDraft(p => ({ ...p, address: e.target.value }))} placeholder="123 Main St, City, State, ZIP" className="field-input"/>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
+                      <div>
+                        <label className="field-label" style={{ display:"flex", alignItems:"center", gap:".35rem" }}><PhoneIcon size={13}/> Phone</label>
+                        <input type="tel" value={cdDraft.phone} onChange={e => setCdDraft(p => ({ ...p, phone: e.target.value }))} placeholder="+1 (555) 000-0000" className="field-input"/>
+                      </div>
+                      <div>
+                        <label className="field-label" style={{ display:"flex", alignItems:"center", gap:".35rem" }}><MailIcon size={13}/> Email</label>
+                        <input type="email" value={cdDraft.email} onChange={e => setCdDraft(p => ({ ...p, email: e.target.value }))} placeholder="press@yourcompany.com" className="field-input"/>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div style={{ padding:"1rem 1.5rem", borderTop:"1px solid #f1f5f9", display:"flex", gap:".75rem", justifyContent:"flex-end", background:"#fafafa", borderRadius:"0 0 1rem 1rem" }}>
+              <button onClick={() => setShowCompanyData(false)} className="btn-secondary">Cancel</button>
+              {cdMode==="manual" && (
+                <button onClick={async () => {
+                  if(!cdDraft.name.trim()||!cdDraft.industry.trim()){ showToast("Company Name and Industry are required","error"); return; }
+                  await saveCompanyData(cdDraft); setShowCompanyData(false); showToast("Company data saved!");
+                }} className="btn-primary"><SaveIcon size={15}/> Save Company Data</button>
+              )}
+              {cdMode==="ai" && !isCrawling && cdDraft.name && (
+                <button onClick={async () => {
+                  await saveCompanyData(cdDraft); setShowCompanyData(false); showToast("Company data saved!");
+                }} className="btn-primary"><SaveIcon size={15}/> Save Extracted Data</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ SETTINGS MODAL ══════════════════════════════════════════════════ */}
+      {showSettings && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:"1rem" }}>
+          <div className="card modal-panel" style={{ maxWidth:"640px", width:"100%", padding:"1.5rem", maxHeight:"90vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.15rem", fontWeight:700 }}>Settings</h2>
+              <button onClick={() => setShowSettings(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8" }}><XIcon size={19}/></button>
+            </div>
+
+            {/* Claude API Key */}
+            <div style={{ background:"#f8faff", border:"1px solid #e0e7ff", borderRadius:".75rem", padding:"1.1rem 1.15rem", marginBottom:"1rem" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".5rem", marginBottom:".4rem" }}>
+                <span style={{ fontSize:"1rem" }}>🤖</span>
+                <h3 style={{ fontWeight:700, fontSize:".95rem", margin:0 }}>Claude API Key</h3>
+                {claudeApiKey && <span style={{ marginLeft:"auto", background:"#f0fdf4", color:"#166534", border:"1px solid #bbf7d0", borderRadius:"99px", fontSize:".7rem", fontWeight:600, padding:".15rem .6rem" }}>✓ Saved</span>}
+              </div>
+              <p style={{ fontSize:".77rem", color:"#64748b", marginBottom:".75rem" }}>
+                Required when running outside the Claude sandbox. Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color:"#4f46e5", fontWeight:600 }}>console.anthropic.com</a>
+              </p>
+              <div style={{ display:"flex", gap:".6rem" }}>
+                <input type="password" value={claudeKeyDraft} onChange={e => setClaudeKeyDraft(e.target.value)}
+                  placeholder="sk-ant-…" className="field-input" style={{ flex:1, fontFamily:"monospace", fontSize:".82rem" }}/>
+                <button onClick={async () => {
+                  const k = claudeKeyDraft.trim();
+                  setClaudeApiKey(k);
+                  try { await window.storage.set("mbb:claudeKey", k); } catch {}
+                  showToast(k ? "Claude key saved!" : "Key cleared");
+                }} className="btn-primary" style={{ flexShrink:0, padding:".6rem 1rem" }}>
+                  <SaveIcon size={14}/> Save
+                </button>
+              </div>
+            </div>
+
+            {/* Custom PR Prompt */}
+            <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:"1.15rem" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:".5rem" }}>
+                <div style={{ flex:1 }}>
+                  <h3 style={{ fontWeight:700, fontSize:".95rem", marginBottom:".2rem", display:"flex", gap:".5rem", alignItems:"center" }}><SparklesIcon size={16}/> Custom PR Prompt</h3>
+                  <p style={{ fontSize:".77rem", color:"#64748b" }}>Placeholders: {"{companyName}, {industry}, {websiteUrl}, {mainFocus}, {theme}, {targetWords}, {keywordsText}, {about}, {quote}, {quoteAttribution}"}</p>
+                </div>
+                <button onClick={() => setCustomPRPrompt("")} style={{ fontSize:".75rem", color:"#6366f1", fontWeight:600, background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", marginLeft:"1rem" }}>Reset</button>
+              </div>
+              <textarea value={customPRPrompt} onChange={e => setCustomPRPrompt(e.target.value)} placeholder="Leave blank to use the default AI prompt..." className="field-input" style={{ fontFamily:"monospace", fontSize:".78rem", height:"160px", resize:"vertical" }}/>
+            </div>
+            <div style={{ marginTop:"1.15rem", display:"flex", justifyContent:"flex-end" }}>
+              <button onClick={() => setShowSettings(false)} className="btn-secondary">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ REFINE DIALOG ═══════════════════════════════════════════════════ */}
+      {showRefineDialog && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:"1rem" }}>
+          <div className="card modal-panel" style={{ maxWidth:"460px", width:"100%", padding:"1.5rem" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".75rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.1rem", fontWeight:700 }}>Refine with AI</h2>
+              <button onClick={() => setShowRefineDialog(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8" }}><XIcon size={18}/></button>
+            </div>
+            <p style={{ fontSize:".82rem", color:"#64748b", marginBottom:"1rem" }}>Describe your changes.{refinementCount>0&&<span style={{ color:"#f59e0b", fontWeight:600 }}> ({refinementCount}/5 used)</span>}</p>
+            <textarea value={refinementInstructions} onChange={e => setRefinementInstructions(e.target.value)} placeholder="e.g., Make it more persuasive, add statistics, shorten the intro..." className="field-input" style={{ height:"110px", resize:"none", marginBottom:"1rem" }}/>
+            <div style={{ display:"flex", gap:".75rem" }}>
+              <button onClick={refinePressRelease} disabled={isLoading||!refinementInstructions.trim()} className="btn-primary" style={{ flex:1, justifyContent:"center" }}>
+                {isLoading?<><LoaderIcon size={15}/> Refining...</>:<><SparklesIcon size={15}/> Refine</>}
+              </button>
+              <button onClick={() => { setShowRefineDialog(false); setRefinementInstructions(""); }} className="btn-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ ORDER DETAIL MODAL ══════════════════════════════════════════════ */}
+      {selectedOrder && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:"1rem" }}>
+          <div className="card" style={{ maxWidth:"760px", width:"100%", padding:"1.5rem", maxHeight:"90vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem" }}>
+              <h2 className="font-display" style={{ fontSize:"1.1rem", fontWeight:700 }}>{selectedOrder.prTitle}</h2>
+              <button onClick={() => setSelectedOrder(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8" }}><XIcon size={19}/></button>
+            </div>
+            <div className="prose" style={{ padding:"1rem", background:"#f8fafc", borderRadius:".6rem", border:"1px solid #e2e8f0" }} dangerouslySetInnerHTML={{ __html:selectedOrder.prContent }}/>
+          </div>
+        </div>
+      )}
+
+      {/* ══ TOAST ═══════════════════════════════════════════════════════════ */}
+      {toast && (
+        <div style={{ position:"fixed", bottom:"1.5rem", right:"1.5rem", zIndex:60, background:toast.type==="success"?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#ef4444,#dc2626)", color:"white", padding:".75rem 1.1rem", borderRadius:".6rem", boxShadow:"0 8px 24px rgba(0,0,0,.2)", fontSize:".875rem", fontWeight:500, display:"flex", alignItems:"center", gap:".5rem", animation:"fadeSlideIn .3s ease" }}>
+          {toast.type==="success"?<CheckIcon size={15}/>:<AlertIcon size={15}/>}{toast.message}
+        </div>
+      )}
+    </div>
+  );
+}
+import { supabase } from "@/integrations/supabase/client";
