@@ -1,381 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import { X, Loader, Sparkles, Building2, Globe, FileText, MapPin, Phone, Mail } from 'lucide-react';
-import { supabase } from "@/integrations/supabase/client";
-
-interface CompanyData {
-  id?: string;
-  company_name: string;
-  industry: string;
-  website_url: string;
-  about_company: string;
-  address: string;
-  phone: string;
-  email: string;
-}
+import { useState } from "react";
+import { callGemini } from "../lib/ai";
+import { SUPABASE_URL } from "../lib/supabase";
+import { CompanyData, EMPTY_COMPANY } from "../lib/constants";
+import { BuildingIcon, XIcon, SaveIcon, LoaderIcon, MapPinIcon, PhoneIcon, MailIcon } from "./icons";
 
 interface CompanyDataModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: CompanyData) => void;
-  currentData?: CompanyData | null;
+  companyData: CompanyData;
+  onSave: (data: CompanyData) => Promise<void>;
+  claudeApiKey: string;
+  showToast: (msg: string, type?: "success" | "error") => void;
 }
 
-export default function CompanyDataModal({ isOpen, onClose, onSave, currentData }: CompanyDataModalProps) {
-  const [activeMode, setActiveMode] = useState<'ai' | 'manual'>('manual');
-  const [isLoading, setIsLoading] = useState(false);
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [formData, setFormData] = useState<CompanyData>({
-    company_name: '',
-    industry: '',
-    website_url: '',
-    about_company: '',
-    address: '',
-    phone: '',
-    email: ''
-  });
+type CrawlPage = { path: string; label: string; status: "loading" | "ok" | "skip" };
 
-  useEffect(() => {
-    if (currentData) {
-      setFormData(currentData);
-    }
-  }, [currentData]);
+export default function CompanyDataModal({ isOpen, onClose, companyData, onSave, claudeApiKey, showToast }: CompanyDataModalProps) {
+  const [cdMode,          setCdMode]          = useState<"ai" | "manual">("ai");
+  const [cdDraft,         setCdDraft]         = useState<CompanyData>({ ...EMPTY_COMPANY });
+  const [aiCrawlUrl,      setAiCrawlUrl]      = useState("");
+  const [crawlSourceType, setCrawlSourceType] = useState<"website" | "summary">("website");
+  const [isCrawling,      setIsCrawling]      = useState(false);
+  const [crawlError,      setCrawlError]      = useState<string | null>(null);
+  const [crawlStatus,     setCrawlStatus]     = useState("");
+  const [crawlPages,      setCrawlPages]      = useState<CrawlPage[]>([]);
+
+  const aiW = (prompt: string) => callGemini(prompt, claudeApiKey);
 
   const crawlWebsite = async () => {
-    if (!websiteUrl.trim()) {
-      alert('Please enter a website URL');
-      return;
+    const rawUrl = aiCrawlUrl.trim().replace(/\/$/, "");
+    if (!rawUrl) { setCrawlError("Please enter a URL"); return; }
+    setIsCrawling(true); setCrawlError(null); setCrawlPages([]);
+    const PRIORITY_PATHS = [
+      { path: "",            label: "Home"       }, { path: "/about",      label: "About"      },
+      { path: "/about-us",   label: "About Us"   }, { path: "/services",   label: "Services"   },
+      { path: "/contact",    label: "Contact"    }, { path: "/contact-us", label: "Contact Us" },
+      { path: "/blog",       label: "Blog"       }, { path: "/news",       label: "News"       },
+    ];
+    const isWebsite = crawlSourceType === "website";
+    const isSummary = crawlSourceType === "summary";
+    const allPages  = isWebsite ? PRIORITY_PATHS : [{ path: "", label: "Summary File" }];
+    setCrawlPages(allPages.map(p => ({ ...p, status: "loading" as const })));
+
+    if (isSummary) {
+      setCrawlStatus("Fetching summary file…");
+      try {
+        const edgeRes  = await fetch(`${SUPABASE_URL}/functions/v1/claude-websearch`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "fetch-summary", url: rawUrl }) });
+        const edgeData = await edgeRes.json();
+        if (!edgeData.content) throw new Error(edgeData.error || "Empty response");
+        const md = edgeData.content;
+        const field = (patterns: RegExp[]) => { for (const pat of patterns) { const m = md.match(pat); if (m && m[1] && m[1].trim() && m[1].trim() !== "null") return m[1].trim(); } return ""; };
+        const listItems = (section: string) => { const m = md.match(new RegExp(`##\\s*${section}[\\s\\S]*?\\n((?:\\s*-[^\\n]+\\n?)+)`, "i")); if (!m) return ""; return m[1].split("\n").map((l: string) => l.replace(/^\s*-\s*/, "").trim()).filter(Boolean).join(", "); };
+        const parsed: Partial<CompanyData> = { name: field([/\*\*Company Name\*\*:\s*(.+)/i, /^#\s+BRAND IDENTITY:\s*(.+)/im]), industry: field([/\*\*Industry\*\*:\s*(.+)/i, /\*\*Sector\*\*:\s*(.+)/i]), websiteUrl: field([/\*\*Website\*\*:\s*(.+)/i]), quoteAttribution: "", about: field([/\*\*Tagline\*\*:\s*(.+)/i, /\*\*Description\*\*:\s*(.+)/i]), services: listItems("CORE SERVICES"), address: field([/\*\*Address\*\*:\s*(.+)/i]), phone: field([/\*\*Phone\*\*:\s*(.+)/i]), email: field([/\*\*Email\*\*:\s*(.+)/i]) };
+        setCrawlPages(allPages.map(p => ({ ...p, status: "ok" as const }))); setCdDraft(prev => ({ ...prev, ...parsed })); setCdMode("manual"); showToast("Summary file loaded — review and save!");
+      } catch (e: any) { setCrawlPages(prev => prev.map(p => ({ ...p, status: "skip" as const }))); setCrawlError("Failed to fetch summary: " + (e.message || "unknown error")); }
+      setCrawlStatus(""); setIsCrawling(false); return;
     }
 
-    setIsLoading(true);
+    setCrawlStatus("Searching with AI…");
+    const urlList = allPages.map(p => rawUrl + p.path);
+    const prompt = `Please visit and read the following URL(s) to extract company information.\n\nThese are pages from the company website. Prioritise: Home for company name/industry, About for company description, Services for list of services, Contact for address/phone/email. For the Blog/News page, look ONLY for the author name in byline elements.\n\nURLs to visit:\n${urlList.map((u, i) => `${i + 1}. ${u}`).join("\n")}\n\nExtract and return ONLY this JSON (empty string "" for anything not found — never null or invented data):\n{\n  "name": "Company name",\n  "industry": "Industry or sector",\n  "websiteUrl": "${rawUrl}",\n  "quoteAttribution": "Full Name — Title, Company (find owner/CEO/founder from About page, or from blog post bylines)",\n  "about": "2-3 sentence company description",\n  "services": "Comma-separated list of main services or products",\n  "address": "Full street address (from Contact page only)",\n  "phone": "Phone number (from Contact page only)",\n  "email": "Contact email"\n}`;
     try {
-      const { data, error } = await supabase.functions.invoke('crawl-website-data', {
-        body: { websiteUrl }
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        setFormData({
-          company_name: data.companyName || '',
-          industry: data.industry || '',
-          website_url: websiteUrl,
-          about_company: data.about || '',
-          address: data.address || '',
-          phone: data.phone || '',
-          email: data.email || ''
-        });
-        setActiveMode('manual');
-      }
-    } catch (e) {
-      console.error('Error crawling website:', e);
-      
-      // Fallback mock data for demo
-      const mockData = {
-        company_name: 'Example Company',
-        industry: 'Technology',
-        website_url: websiteUrl,
-        about_company: 'A leading technology company focused on innovation and digital transformation.',
-        address: '123 Main Street, City, State 12345',
-        phone: '+1 (555) 123-4567',
-        email: 'contact@example.com'
-      };
-      
-      setFormData(mockData);
-      setActiveMode('manual');
-      alert('AI crawling unavailable. Using demo data. Please review and edit.');
-    }
-    setIsLoading(false);
-  };
-
-  const handleSave = async () => {
-    if (!formData.company_name || !formData.industry || !formData.website_url) {
-      alert('Please fill in Company Name, Industry, and Website URL (required fields)');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // If user is logged in, save to Supabase
-      if (user) {
-        const payload = {
-          ...formData,
-          user_id: user.id
-        };
-
-        let result;
-        if (formData.id) {
-          // Update existing profile
-          result = await supabase
-            .from('company_profiles')
-            .update(payload)
-            .eq('id', formData.id)
-            .select();
-        } else {
-          // Insert new profile
-          result = await supabase
-            .from('company_profiles')
-            .insert([payload])
-            .select()
-            .single();
-          
-          if (result.data) {
-            setFormData({ ...formData, id: result.data.id });
-          }
-        }
-
-        if (result.error) {
-          console.error('Supabase error:', result.error);
-          throw result.error;
-        }
-
-        onSave(formData);
-        alert('Company data saved successfully to your account!');
-      } else {
-        // No user logged in - save to localStorage and use in memory
-        localStorage.setItem('company_data', JSON.stringify(formData));
-        onSave(formData);
-        alert('Company data saved locally! Sign in to save permanently to your account.');
-      }
-      
-      onClose();
-    } catch (e: unknown) {
-      console.error('Error saving company data:', e);
-      
-      // Fallback to localStorage if database fails
-      localStorage.setItem('company_data', JSON.stringify(formData));
-      onSave(formData);
-      alert('Company data saved locally (database unavailable). Your data will work for this session.');
-      onClose();
-    }
-    setIsLoading(false);
+      const text = await aiW(prompt);
+      const clean = text.replace(/```json|```/g, "").trim();
+      const jsonStr = clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1);
+      const parsed  = JSON.parse(jsonStr);
+      setCrawlPages(allPages.map(p => ({ ...p, status: "ok" as const }))); setCdDraft(prev => ({ ...prev, ...parsed, websiteUrl: rawUrl })); setCdMode("manual"); showToast("Data extracted — review and save!");
+    } catch (e: any) { setCrawlPages(prev => prev.map(p => ({ ...p, status: "skip" as const }))); setCrawlError("Extraction failed: " + (e.message || "unknown error")); }
+    setCrawlStatus(""); setIsCrawling(false);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-indigo-600"/>
-            Company Data
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="h-6 w-6"/>
-          </button>
-        </div>
-
-        <div className="p-6">
-          <div className="flex gap-3 mb-6">
-            <button
-              onClick={() => setActiveMode('ai')}
-              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-                activeMode === 'ai'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Sparkles className="h-5 w-5"/>
-              AI Company Data
-            </button>
-            <button
-              onClick={() => setActiveMode('manual')}
-              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-                activeMode === 'manual'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <FileText className="h-5 w-5"/>
-              Manual Entry
-            </button>
+    <div className="modal-backdrop" style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,padding:"1rem" }} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div className="modal-panel card" style={{ maxWidth:"580px",width:"100%",maxHeight:"92vh",overflowY:"auto",padding:0,borderRadius:"1rem" }}>
+        <div style={{ background:"linear-gradient(135deg,#0b1120,#1e1b4b)",padding:"1.15rem 1.5rem",borderRadius:"1rem 1rem 0 0",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:".75rem" }}>
+            <div style={{ background:"rgba(99,102,241,.3)",borderRadius:".45rem",padding:".42rem",display:"flex" }}><BuildingIcon size={17}/></div>
+            <div><h2 className="font-display" style={{ color:"white",fontWeight:800,fontSize:"1.05rem",margin:0 }}>Company Data</h2><p style={{ color:"#818cf8",fontSize:".72rem",margin:"2px 0 0" }}>Powers all AI features across the dashboard</p></div>
           </div>
-
-          {activeMode === 'ai' ? (
-            <div className="space-y-4">
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 border border-indigo-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-indigo-600"/>
-                  AI Website Crawler
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Enter your website URL and our AI will automatically extract your company information.
-                </p>
-                
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Globe className="h-4 w-4 inline mr-1"/>
-                      Website URL
-                    </label>
-                    <input
-                      type="url"
-                      value={websiteUrl}
-                      onChange={(e) => setWebsiteUrl(e.target.value)}
-                      placeholder="https://yourwebsite.com"
-                      className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
+          <button onClick={onClose} style={{ color:"#64748b",background:"none",border:"none",cursor:"pointer" }}><XIcon size={19}/></button>
+        </div>
+        <div style={{ padding:"1.15rem 1.5rem 0" }}>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:".75rem",marginBottom:"1.15rem" }}>
+            <button onClick={()=>setCdMode("ai")} className={`cd-option ${cdMode==="ai"?"selected":""}`}><div style={{ display:"flex",alignItems:"center",gap:".55rem",marginBottom:".4rem" }}><span style={{ fontSize:"1.2rem" }}>🤖</span><span style={{ fontWeight:700,color:cdMode==="ai"?"#4338ca":"#1e293b",fontSize:".875rem" }}>AI Company Data</span></div><p style={{ fontSize:".77rem",color:"#64748b",margin:0,lineHeight:1.5 }}>Enter your website URL — AI crawls it and autofills all fields automatically.</p></button>
+            <button onClick={()=>setCdMode("manual")} className={`cd-option ${cdMode==="manual"?"selected":""}`}><div style={{ display:"flex",alignItems:"center",gap:".55rem",marginBottom:".4rem" }}><span style={{ fontSize:"1.2rem" }}>✍️</span><span style={{ fontWeight:700,color:cdMode==="manual"?"#4338ca":"#1e293b",fontSize:".875rem" }}>Manual Entry</span></div><p style={{ fontSize:".77rem",color:"#64748b",margin:0,lineHeight:1.5 }}>Fill out your company details directly for use across all AI features.</p></button>
+          </div>
+        </div>
+        <div style={{ height:1,background:"#f1f5f9",margin:"0 1.5rem" }}/>
+        {cdMode==="ai"&&(
+          <div style={{ padding:"1.15rem 1.5rem" }}>
+            <div style={{ background:"#f0f4ff",border:"1px solid #c7d2fe",borderRadius:".75rem",padding:".875rem 1.1rem",marginBottom:"1.15rem" }}><p style={{ fontSize:".82rem",color:"#3730a3",fontWeight:500,lineHeight:1.6,margin:0 }}>🤖 <strong>Claude AI</strong> will visit up to <strong>8 pages</strong> of your website — prioritising <em>Home, About, Services</em> and <em>Contact</em> — and extract all company data in one pass.</p></div>
+            <div style={{ display:"flex",gap:".5rem",marginBottom:".85rem",background:"#f1f5f9",borderRadius:".5rem",padding:".25rem" }}>
+              {[{key:"website",label:"🌐 Website URL"},{key:"summary",label:"📄 Summary File URL"}].map(opt=>(
+                <button key={opt.key} onClick={()=>{ setCrawlSourceType(opt.key as "website"|"summary"); setAiCrawlUrl(""); setCrawlError(null); }} style={{ flex:1,padding:".4rem .5rem",border:"none",borderRadius:".35rem",fontSize:".75rem",fontWeight:600,cursor:"pointer",transition:"all .15s",background:crawlSourceType===opt.key?"white":"transparent",color:crawlSourceType===opt.key?"#4338ca":"#64748b",boxShadow:crawlSourceType===opt.key?"0 1px 4px rgba(0,0,0,.1)":"none" }}>{opt.label}</button>
+              ))}
+            </div>
+            <div style={{ display:"flex",gap:".6rem",marginBottom:crawlPages.length>0?".85rem":0 }}>
+              <input type="url" value={aiCrawlUrl} onChange={e=>setAiCrawlUrl(e.target.value)} placeholder={crawlSourceType==="website"?"https://yourcompany.com":"https://yoursite.com/summary.txt"} className="field-input" style={{ flex:1 }}/>
+              <button onClick={crawlWebsite} disabled={isCrawling||!aiCrawlUrl.trim()} className="btn-primary" style={{ flexShrink:0,whiteSpace:"nowrap" }}>{isCrawling?<><LoaderIcon size={14}/> {crawlStatus||"Crawling…"}</>:"🔍 Extract Data"}</button>
+            </div>
+            {crawlError&&<p style={{ color:"#be123c",fontSize:".78rem",marginTop:".5rem" }}>{crawlError}</p>}
+            {crawlPages.length>0&&<div style={{ display:"flex",flexWrap:"wrap",gap:".35rem",marginTop:".65rem" }}>{crawlPages.map(p=><span key={p.path} style={{ display:"inline-flex",alignItems:"center",gap:".3rem",fontSize:".7rem",fontWeight:600,padding:".2rem .55rem",borderRadius:"99px",background:p.status==="ok"?"#f0fdf4":p.status==="loading"?"#f0f4ff":"#fff1f2",color:p.status==="ok"?"#166534":p.status==="loading"?"#3730a3":"#be123c",border:`1px solid ${p.status==="ok"?"#bbf7d0":p.status==="loading"?"#c7d2fe":"#fecdd3"}` }}>{p.status==="loading"?"⏳":p.status==="ok"?"✓":"✗"} {p.label}</span>)}</div>}
+          </div>
+        )}
+        {cdMode==="manual"&&(
+          <div style={{ padding:"1.15rem 1.5rem",display:"flex",flexDirection:"column",gap:".85rem" }}>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:".7rem" }}>
+              <div><label className="field-label">Company Name <span style={{ color:"#ef4444" }}>*</span></label><input value={cdDraft.name} onChange={e=>setCdDraft(p=>({...p,name:e.target.value}))} placeholder="Acme Corporation" className="field-input"/></div>
+              <div><label className="field-label">Industry <span style={{ color:"#ef4444" }}>*</span></label><input value={cdDraft.industry} onChange={e=>setCdDraft(p=>({...p,industry:e.target.value}))} placeholder="e.g. Digital Marketing" className="field-input"/></div>
+            </div>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:".7rem" }}>
+              <div><label className="field-label">Website URL</label><input type="url" value={cdDraft.websiteUrl} onChange={e=>setCdDraft(p=>({...p,websiteUrl:e.target.value}))} placeholder="https://yoursite.com" className="field-input"/></div>
+              <div><label className="field-label">Quote Attribution</label><input value={cdDraft.quoteAttribution} onChange={e=>setCdDraft(p=>({...p,quoteAttribution:e.target.value}))} placeholder="Jane Doe — CEO, Acme Corp" className="field-input"/></div>
+            </div>
+            <div><label className="field-label">About Company</label><textarea value={cdDraft.about} onChange={e=>setCdDraft(p=>({...p,about:e.target.value}))} placeholder="Brief company description, mission, products or services…" className="field-input" style={{ height:"80px",resize:"vertical",lineHeight:1.6 }}/></div>
+            <div><label className="field-label">List of Services</label><textarea value={cdDraft.services||""} onChange={e=>setCdDraft(p=>({...p,services:e.target.value}))} placeholder="e.g. SEO Optimization, Content Marketing…" className="field-input" style={{ height:"70px",resize:"vertical",lineHeight:1.6 }}/></div>
+            <div>
+              <p style={{ fontSize:".7rem",fontWeight:700,color:"#6366f1",letterSpacing:".08em",marginBottom:".7rem" }}>CONTACT DATA</p>
+              <div style={{ display:"flex",flexDirection:"column",gap:".6rem" }}>
+                <div><label className="field-label" style={{ display:"flex",alignItems:"center",gap:".35rem" }}><MapPinIcon size={13}/> Address</label><input value={cdDraft.address} onChange={e=>setCdDraft(p=>({...p,address:e.target.value}))} placeholder="123 Main St, City, State, ZIP" className="field-input"/></div>
+                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:".7rem" }}>
+                  <div><label className="field-label" style={{ display:"flex",alignItems:"center",gap:".35rem" }}><PhoneIcon size={13}/> Phone</label><input type="tel" value={cdDraft.phone} onChange={e=>setCdDraft(p=>({...p,phone:e.target.value}))} placeholder="+1 (555) 000-0000" className="field-input"/></div>
+                  <div><label className="field-label" style={{ display:"flex",alignItems:"center",gap:".35rem" }}><MailIcon size={13}/> Email</label><input type="email" value={cdDraft.email} onChange={e=>setCdDraft(p=>({...p,email:e.target.value}))} placeholder="press@yourcompany.com" className="field-input"/></div>
                 </div>
-
-                <button
-                  onClick={crawlWebsite}
-                  disabled={isLoading || !websiteUrl.trim()}
-                  className="mt-4 w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader className="h-5 w-5 animate-spin"/>
-                      Crawling Website...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-5 w-5"/>
-                      Crawl & Auto-Fill
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  💡 <strong>Tip:</strong> After AI crawling, you can review and edit the extracted information in the Manual Entry tab.
-                </p>
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.company_name}
-                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                    placeholder="Your Company Name"
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Industry <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.industry}
-                    onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                    placeholder="e.g., Technology, Healthcare, Finance"
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Globe className="h-4 w-4 inline mr-1"/>
-                  Website URL <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="url"
-                  value={formData.website_url}
-                  onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-                  placeholder="https://yourwebsite.com"
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <FileText className="h-4 w-4 inline mr-1"/>
-                  About Company
-                </label>
-                <textarea
-                  value={formData.about_company}
-                  onChange={(e) => setFormData({ ...formData, about_company: e.target.value })}
-                  placeholder="Brief description of your company, products, or services..."
-                  className="w-full border border-gray-300 p-3 rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <MapPin className="h-4 w-4 inline mr-1"/>
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Street Address, City, State, ZIP"
-                      className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <Phone className="h-4 w-4 inline mr-1"/>
-                        Phone
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+1 (555) 123-4567"
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <Mail className="h-4 w-4 inline mr-1"/>
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="contact@company.com"
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t">
-                <button
-                  onClick={handleSave}
-                  disabled={isLoading}
-                  className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader className="h-5 w-5 animate-spin"/>
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Company Data'
-                  )}
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
+        )}
+        <div style={{ padding:"1rem 1.5rem",borderTop:"1px solid #f1f5f9",display:"flex",gap:".75rem",justifyContent:"flex-end",background:"#fafafa",borderRadius:"0 0 1rem 1rem" }}>
+          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          {cdMode==="manual"&&<button onClick={async()=>{ if(!cdDraft.name.trim()||!cdDraft.industry.trim()){showToast("Company Name and Industry are required","error");return;} await onSave(cdDraft); onClose(); showToast("Company data saved!"); }} className="btn-primary"><SaveIcon size={15}/> Save Company Data</button>}
+          {cdMode==="ai"&&!isCrawling&&cdDraft.name&&<button onClick={async()=>{ await onSave(cdDraft); onClose(); showToast("Company data saved!"); }} className="btn-primary"><SaveIcon size={15}/> Save Extracted Data</button>}
         </div>
       </div>
     </div>
