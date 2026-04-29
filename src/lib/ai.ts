@@ -31,6 +31,7 @@ export async function callClaude(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
   };
   if (apiKey) headers["x-api-key"] = apiKey;
 
@@ -54,6 +55,7 @@ export async function callGemini(prompt: string, apiKey = ""): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
   };
   if (apiKey) headers["x-api-key"] = apiKey;
 
