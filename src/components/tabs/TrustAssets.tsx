@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Order } from "../../lib/constants";
 import { store } from "../../lib/ai";
+import { CheckIcon, CopyIcon, XIcon, SparklesIcon, SearchIcon, LoaderIcon, AlertIcon, ShieldIcon } from "../icons";
 import { LEFT_LAUREL_D, RIGHT_LAUREL_D, LEFT_LAUREL_TRANSFORM, RIGHT_LAUREL_TRANSFORM } from "../../lib/laurelPaths";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,8 +63,8 @@ const EMPTY_CONFIG: Omit<BadgeConfig, "id" | "name"> = {
 
 const Laurel = ({ flip, lc = "#d1d5db" }: { flip?: boolean; lc?: string }) => (
   <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
-    width="52" height="auto" viewBox="0 0 191 385"
-    style={{ flexShrink: 0, opacity: 0.85 }}>
+    width="52" viewBox="0 0 191 385"
+    style={{ flexShrink: 0, opacity: 0.85, height: "auto" }}>
     <path
       d={flip ? RIGHT_LAUREL_D : LEFT_LAUREL_D}
       fill={lc}
