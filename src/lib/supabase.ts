@@ -1,5 +1,5 @@
 export const SUPABASE_URL  = "https://rsaoscgotumlvsbzwdiy.supabase.co";
-export const SUPABASE_ANON = "sb_publishable_Yo7e6dxrIaya7Q5-TurGLA_Zk9Tuheq";
+export const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzYW9zY2dvdHVtbHZzYnp3ZGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NTkwNzAsImV4cCI6MjA4ODQzNTA3MH0.eZfmlFg-bg_g5uWruw2xBDFTIvmxHV1lAHrKQdv8aSk";
 
 const _headers = (extra: Record<string, string> = {}) => ({
   "apikey": SUPABASE_ANON,
