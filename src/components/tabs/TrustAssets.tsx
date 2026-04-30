@@ -60,23 +60,23 @@ const EMPTY_CONFIG: Omit<BadgeConfig, "id" | "name"> = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const Laurel = ({ flip, lc = "#d1d5db" }: { flip?: boolean; lc?: string }) => (
-  <svg width="65" height="104" viewBox="0 0 65 104" fill="none" style={{ flexShrink:0, opacity:.82, transform: flip ? "scaleX(-1)" : "none" }}>
-    <path d="M32 100 Q30 76 32 52 Q34 28 32 8" stroke={lc} strokeWidth="1.3" fill="none"/>
-    {/* 6 pairs of leaves fanning outward from stem, widest in middle */}
-    <ellipse cx="18" cy="92" rx="12" ry="5.5" transform="rotate(-48 18 92)" fill={lc}/>
-    <ellipse cx="46" cy="92" rx="12" ry="5.5" transform="rotate(48 46 92)"  fill={lc}/>
-    <ellipse cx="11" cy="78" rx="13" ry="5.5" transform="rotate(-40 11 78)" fill={lc}/>
-    <ellipse cx="53" cy="78" rx="13" ry="5.5" transform="rotate(40 53 78)"  fill={lc}/>
-    <ellipse cx="7"  cy="63" rx="14" ry="5.5" transform="rotate(-30 7 63)"  fill={lc}/>
-    <ellipse cx="57" cy="63" rx="14" ry="5.5" transform="rotate(30 57 63)"  fill={lc}/>
-    <ellipse cx="9"  cy="48" rx="13" ry="5.2" transform="rotate(-22 9 48)"  fill={lc}/>
-    <ellipse cx="55" cy="48" rx="13" ry="5.2" transform="rotate(22 55 48)"  fill={lc}/>
-    <ellipse cx="14" cy="34" rx="12" ry="5"   transform="rotate(-14 14 34)" fill={lc}/>
-    <ellipse cx="50" cy="34" rx="12" ry="5"   transform="rotate(14 50 34)"  fill={lc}/>
-    <ellipse cx="20" cy="22" rx="10" ry="4.5" transform="rotate(-7 20 22)"  fill={lc}/>
-    <ellipse cx="44" cy="22" rx="10" ry="4.5" transform="rotate(7 44 22)"   fill={lc}/>
-    {/* Top single leaf */}
-    <ellipse cx="32" cy="12" rx="8"  ry="4"                                  fill={lc}/>
+  <svg width="54" height="106" viewBox="0 0 54 106" fill={lc} style={{ flexShrink:0, opacity:.85, transform: flip ? "scaleX(-1)" : "none" }}>
+    {/* Stem: curves from bottom-right → sweeps left → ends upper-center */}
+    <path d="M 30 104 C 6 80 3 42 26 7" stroke={lc} strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+    {/* Right-side leaves — pointing inward (toward badge center) */}
+    <ellipse cx="29" cy="96" rx="9" ry="2.5" transform="rotate(-55 29 96)"/>
+    <ellipse cx="19" cy="78" rx="9" ry="2.5" transform="rotate(-65 19 78)"/>
+    <ellipse cx="11" cy="60" rx="9" ry="2.5" transform="rotate(-75 11 60)"/>
+    <ellipse cx="8"  cy="43" rx="9" ry="2.5" transform="rotate(-82 8 43)"/>
+    <ellipse cx="12" cy="26" rx="9" ry="2.5" transform="rotate(-78 12 26)"/>
+    <ellipse cx="21" cy="13" rx="8" ry="2.5" transform="rotate(-68 21 13)"/>
+    {/* Left-side leaves — pointing outward (away from badge center) */}
+    <ellipse cx="22" cy="87" rx="9" ry="2.5" transform="rotate(-135 22 87)"/>
+    <ellipse cx="13" cy="70" rx="9" ry="2.5" transform="rotate(-125 13 70)"/>
+    <ellipse cx="5"  cy="52" rx="9" ry="2.5" transform="rotate(-113 5 52)"/>
+    <ellipse cx="5"  cy="35" rx="9" ry="2.5" transform="rotate(-103 5 35)"/>
+    <ellipse cx="16" cy="19" rx="8" ry="2.5" transform="rotate(-97 16 19)"/>
+    <ellipse cx="26" cy="8"  rx="7" ry="2.2" transform="rotate(-85 26 8)"/>
   </svg>
 );
 
@@ -190,7 +190,7 @@ function generateEmbedHTML(config: BadgeConfig, logos: LogoDef[], tier: Tier): s
   const animId   = `mbb-scroll-${config.id.slice(0,8)}`;
 
   const logoEl = (l: LogoDef) => `<span style="font-family:${l.font};font-size:${l.size};font-weight:${l.weight};color:${lc};letter-spacing:${l.spacing??"normal"};line-height:${l.lh??"1.2"};font-style:${l.fStyle??"normal"};display:inline-block;white-space:nowrap">${l.label.replace("\n","<br>")}</span>`;
-  const laurelSVG = (flip: boolean) => `<svg width="65" height="104" viewBox="0 0 65 104" fill="none" style="flex-shrink:0;opacity:0.82;${flip?"transform:scaleX(-1)":""}"><path d="M32 100 Q30 76 32 52 Q34 28 32 8" stroke="${leafC}" stroke-width="1.3" fill="none"/><ellipse cx="18" cy="92" rx="12" ry="5.5" transform="rotate(-48 18 92)" fill="${leafC}"/><ellipse cx="46" cy="92" rx="12" ry="5.5" transform="rotate(48 46 92)" fill="${leafC}"/><ellipse cx="11" cy="78" rx="13" ry="5.5" transform="rotate(-40 11 78)" fill="${leafC}"/><ellipse cx="53" cy="78" rx="13" ry="5.5" transform="rotate(40 53 78)" fill="${leafC}"/><ellipse cx="7" cy="63" rx="14" ry="5.5" transform="rotate(-30 7 63)" fill="${leafC}"/><ellipse cx="57" cy="63" rx="14" ry="5.5" transform="rotate(30 57 63)" fill="${leafC}"/><ellipse cx="9" cy="48" rx="13" ry="5.2" transform="rotate(-22 9 48)" fill="${leafC}"/><ellipse cx="55" cy="48" rx="13" ry="5.2" transform="rotate(22 55 48)" fill="${leafC}"/><ellipse cx="14" cy="34" rx="12" ry="5" transform="rotate(-14 14 34)" fill="${leafC}"/><ellipse cx="50" cy="34" rx="12" ry="5" transform="rotate(14 50 34)" fill="${leafC}"/><ellipse cx="20" cy="22" rx="10" ry="4.5" transform="rotate(-7 20 22)" fill="${leafC}"/><ellipse cx="44" cy="22" rx="10" ry="4.5" transform="rotate(7 44 22)" fill="${leafC}"/><ellipse cx="32" cy="12" rx="8" ry="4" fill="${leafC}"/></svg>`;
+  const laurelSVG = (flip: boolean) => `<svg width="54" height="106" viewBox="0 0 54 106" fill="${leafC}" style="flex-shrink:0;opacity:0.85;${flip?"transform:scaleX(-1)":""}"><path d="M 30 104 C 6 80 3 42 26 7" stroke="${leafC}" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="29" cy="96" rx="9" ry="2.5" transform="rotate(-55 29 96)"/><ellipse cx="19" cy="78" rx="9" ry="2.5" transform="rotate(-65 19 78)"/><ellipse cx="11" cy="60" rx="9" ry="2.5" transform="rotate(-75 11 60)"/><ellipse cx="8" cy="43" rx="9" ry="2.5" transform="rotate(-82 8 43)"/><ellipse cx="12" cy="26" rx="9" ry="2.5" transform="rotate(-78 12 26)"/><ellipse cx="21" cy="13" rx="8" ry="2.5" transform="rotate(-68 21 13)"/><ellipse cx="22" cy="87" rx="9" ry="2.5" transform="rotate(-135 22 87)"/><ellipse cx="13" cy="70" rx="9" ry="2.5" transform="rotate(-125 13 70)"/><ellipse cx="5" cy="52" rx="9" ry="2.5" transform="rotate(-113 5 52)"/><ellipse cx="5" cy="35" rx="9" ry="2.5" transform="rotate(-103 5 35)"/><ellipse cx="16" cy="19" rx="8" ry="2.5" transform="rotate(-97 16 19)"/><ellipse cx="26" cy="8" rx="7" ry="2.2" transform="rotate(-85 26 8)"/></svg>`;
   const header = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;height:0.5px;background:${lineC}"></div><span style="font-family:Arial,sans-serif;font-size:10px;letter-spacing:.22em;color:${textC};font-weight:600;white-space:nowrap">AS SEEN ON</span><div style="flex:1;height:0.5px;background:${lineC}"></div></div>`;
   const counter = config.outletCounter ? `<span style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:.18em;color:${textC};font-weight:500">AND OVER ${OUTLET_COUNT[tier]} NEWS SITES</span>` : "";
   const verif   = config.verificationBadge ? `<span style="font-family:Arial,sans-serif;font-size:8px;color:${textC};margin-top:10px;display:flex;align-items:center;gap:4px;font-weight:600"><span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;border:0.8px solid ${textC};font-size:7px;line-height:1;flex-shrink:0">&#10003;</span>Verified by <a href="${VERIFICATION_URL}" target="_blank" rel="noopener noreferrer" style="color:${textC};text-decoration:none;font-weight:600">Media Blast Boosters&#8482;</a></span>` : "";
