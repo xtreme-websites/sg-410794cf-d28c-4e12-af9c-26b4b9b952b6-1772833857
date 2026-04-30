@@ -61,14 +61,14 @@ const EMPTY_CONFIG: Omit<BadgeConfig, "id" | "name"> = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const Laurel = ({ flip, lc = "#d1d5db" }: { flip?: boolean; lc?: string }) => (
+const Laurel = ({ side, lc = "#d1d5db" }: { side: "left" | "right"; lc?: string }) => (
   <svg version="1.1" xmlns="http://www.w3.org/2000/svg"
     width="52" viewBox="0 0 191 385"
     style={{ flexShrink: 0, opacity: 0.85, height: "auto" }}>
     <path
-      d={flip ? RIGHT_LAUREL_D : LEFT_LAUREL_D}
+      d={side === "right" ? RIGHT_LAUREL_D : LEFT_LAUREL_D}
       fill={lc}
-      transform={flip ? RIGHT_LAUREL_TRANSFORM : LEFT_LAUREL_TRANSFORM}
+      transform={side === "right" ? RIGHT_LAUREL_TRANSFORM : LEFT_LAUREL_TRANSFORM}
     />
   </svg>
 );
