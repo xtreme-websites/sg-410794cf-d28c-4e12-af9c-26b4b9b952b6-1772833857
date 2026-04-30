@@ -31,25 +31,25 @@ interface LogoDef { id: string; label: string; font: string; size: string; weigh
 
 const LOGOS: Record<Tier, LogoDef[]> = {
   starter: [
-    { id: "motherlode", label: "myMOTHERLODE.com",       font: "Arial,sans-serif", size: "11px", weight: "700", spacing: "-.3px" },
-    { id: "chronicle",  label: "The Chronicle\nJournal", font: "Georgia,serif",    size: "12px", weight: "700", lh: "1.15" },
-    { id: "minyan",     label: "MINYANVILLE",            font: "Arial,sans-serif", size: "11px", weight: "700", spacing: "2px" },
+    { id: "gnews",     label: "Google News",            font: "Arial,sans-serif", size: "11px", weight: "500" },
+    { id: "chronicle", label: "The Chronicle\nJournal", font: "Georgia,serif",    size: "12px", weight: "700", lh: "1.15" },
+    { id: "minyan",    label: "MINYANVILLE",            font: "Arial,sans-serif", size: "11px", weight: "700", spacing: "2px" },
   ],
   standard: [
-    { id: "motherlode", label: "myMOTHERLODE.com",       font: "Arial,sans-serif", size: "10px", weight: "700", spacing: "-.3px" },
-    { id: "chronicle",  label: "The Chronicle\nJournal", font: "Georgia,serif",    size: "11px", weight: "700", lh: "1.15" },
-    { id: "minyan",     label: "MINYANVILLE",            font: "Arial,sans-serif", size: "10px", weight: "700", spacing: "1.5px" },
-    { id: "benzinga",   label: "BENZINGA",               font: "Arial,sans-serif", size: "12px", weight: "900", spacing: "1px" },
-    { id: "barchart",   label: "barchart",               font: "Arial,sans-serif", size: "12px", weight: "700" },
+    { id: "gnews",     label: "Google News",            font: "Arial,sans-serif", size: "10px", weight: "500" },
+    { id: "chronicle", label: "The Chronicle\nJournal", font: "Georgia,serif",    size: "11px", weight: "700", lh: "1.15" },
+    { id: "minyan",    label: "MINYANVILLE",            font: "Arial,sans-serif", size: "10px", weight: "700", spacing: "1.5px" },
+    { id: "fox",       label: "FOX",                    font: "Arial,sans-serif", size: "18px", weight: "900", spacing: "1px" },
+    { id: "benzinga",  label: "BENZINGA",               font: "Arial,sans-serif", size: "12px", weight: "900", spacing: "1px" },
   ],
   premium: [
-    { id: "motherlode", label: "myMOTHERLODE.com",       font: "Arial,sans-serif", size: "9px",  weight: "700", spacing: "-.3px" },
-    { id: "chronicle",  label: "The Chronicle\nJournal", font: "Georgia,serif",    size: "10px", weight: "700", lh: "1.15" },
-    { id: "minyan",     label: "MINYANVILLE",            font: "Arial,sans-serif", size: "9px",  weight: "700", spacing: "1.5px" },
-    { id: "benzinga",   label: "BENZINGA",               font: "Arial,sans-serif", size: "11px", weight: "900", spacing: "1px" },
-    { id: "barchart",   label: "barchart",               font: "Arial,sans-serif", size: "11px", weight: "700" },
-    { id: "fox",        label: "FOX",                    font: "Arial,sans-serif", size: "18px", weight: "900", spacing: "1px" },
-    { id: "yahoo",      label: "Yahoo Finance",          font: "Georgia,serif",    size: "11px", weight: "400", fStyle: "italic" },
+    { id: "gnews",     label: "Google News",            font: "Arial,sans-serif", size: "9px",  weight: "500" },
+    { id: "chronicle", label: "The Chronicle\nJournal", font: "Georgia,serif",    size: "10px", weight: "700", lh: "1.15" },
+    { id: "minyan",    label: "MINYANVILLE",            font: "Arial,sans-serif", size: "9px",  weight: "700", spacing: "1.5px" },
+    { id: "fox",       label: "FOX",                    font: "Arial,sans-serif", size: "18px", weight: "900", spacing: "1px" },
+    { id: "benzinga",  label: "BENZINGA",               font: "Arial,sans-serif", size: "11px", weight: "900", spacing: "1px" },
+    { id: "bi",        label: "Business Insider",       font: "Arial,sans-serif", size: "10px", weight: "700" },
+    { id: "ap",        label: "AP",                     font: "Arial,sans-serif", size: "16px", weight: "900", spacing: "3px" },
   ],
 };
 
@@ -106,13 +106,20 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
+// ─── Color helper ─────────────────────────────────────────────────────────────
+function hexToRgba(hex: string, alpha: number): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return `rgba(156,163,175,${alpha})`;
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 // ─── Badge preview ────────────────────────────────────────────────────────────
 function BadgePreview({ config, logos, tier, scale = 1 }: { config: BadgeConfig; logos: LogoDef[]; tier: Tier; scale?: number }) {
   const lc     = config.logoColor;
   const bg     = config.bgColor;
-  const lineC  = "#d1d5db";
-  const textC  = "#9ca3af";
-  const leafC  = "#d1d5db";
+  const lineC  = hexToRgba(lc, 0.18);
+  const textC  = hexToRgba(lc, 0.52);
+  const leafC  = hexToRgba(lc, 0.22);
   const isSlider = config.layout === "slider";
   const animId   = `mbb-marquee-${config.id.slice(0,8)}`;
 
@@ -147,12 +154,12 @@ function BadgePreview({ config, logos, tier, scale = 1 }: { config: BadgeConfig;
       )}
 
       {/* Footer */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: `${3*scale}px`, marginTop: `${8*scale}px`, padding: isSlider ? `0 ${12*scale}px` : "0" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: `${2*scale}px`, marginTop: `${8*scale}px`, padding: isSlider ? `0 ${12*scale}px` : "0" }}>
         {config.outletCounter && (
           <span style={{ fontFamily: "Arial,sans-serif", fontSize: `${9*scale}px`, letterSpacing: ".18em", color: textC, fontWeight: 500 }}>AND OVER {OUTLET_COUNT[tier]} NEWS SITES</span>
         )}
         {config.verificationBadge && (
-          <span style={{ fontFamily: "Arial,sans-serif", fontSize: `${8*scale}px`, color: textC }}>
+          <span style={{ fontFamily: "Arial,sans-serif", fontSize: `${8*scale}px`, color: textC, marginTop: `${5*scale}px` }}>
             ✓ Verified by{" "}
             <a href={VERIFICATION_URL} target="_blank" rel="noopener noreferrer" style={{ color: "#534AB7", textDecoration: "underline", fontWeight: 600 }}>Media Blast Boosters</a>
           </span>
@@ -166,16 +173,18 @@ function BadgePreview({ config, logos, tier, scale = 1 }: { config: BadgeConfig;
 function generateEmbedHTML(config: BadgeConfig, logos: LogoDef[], tier: Tier): string {
   const lc    = config.logoColor;
   const bg    = config.bgColor;
-  const lineC = "#d1d5db";
-  const textC = "#9ca3af";
-  const leafC = "#d1d5db";
+  const lineC = hexToRgba(lc, 0.18);
+  const textC = hexToRgba(lc, 0.52);
+  const leafC = hexToRgba(lc, 0.22);
   const isSlider = config.layout === "slider";
   const animId   = `mbb-scroll-${config.id.slice(0,8)}`;
 
   const logoEl = (l: LogoDef) => `<span style="font-family:${l.font};font-size:${l.size};font-weight:${l.weight};color:${lc};letter-spacing:${l.spacing??"normal"};line-height:${l.lh??"1.2"};font-style:${l.fStyle??"normal"};display:inline-block;white-space:nowrap">${l.label.replace("\n","<br>")}</span>`;
   const laurelSVG = (flip: boolean) => `<svg width="34" height="70" viewBox="0 0 34 70" fill="none" style="flex-shrink:0;opacity:0.75;${flip?"transform:scaleX(-1)":""}"><path d="M17 66 Q16 43 17 8" stroke="${leafC}" stroke-width="1.2"/><ellipse cx="10" cy="60" rx="7" ry="3.2" transform="rotate(-42 10 60)" fill="${leafC}"/><ellipse cx="8" cy="50" rx="7" ry="3.2" transform="rotate(-30 8 50)" fill="${leafC}"/><ellipse cx="8" cy="40" rx="7" ry="3.2" transform="rotate(-18 8 40)" fill="${leafC}"/><ellipse cx="9" cy="30" rx="7" ry="3.2" transform="rotate(-8 9 30)" fill="${leafC}"/><ellipse cx="11" cy="21" rx="6" ry="2.8" transform="rotate(-2 11 21)" fill="${leafC}"/><ellipse cx="14" cy="13" rx="5" ry="2.5" transform="rotate(6 14 13)" fill="${leafC}"/></svg>`;
   const header = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;height:0.5px;background:${lineC}"></div><span style="font-family:Arial,sans-serif;font-size:10px;letter-spacing:.22em;color:${textC};font-weight:600;white-space:nowrap">AS SEEN ON</span><div style="flex:1;height:0.5px;background:${lineC}"></div></div>`;
-  const footer  = `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-top:8px">${config.outletCounter ? `<span style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:.18em;color:${textC};font-weight:500">AND OVER ${OUTLET_COUNT[tier]} NEWS SITES</span>` : ""}${config.verificationBadge ? `<span style="font-family:Arial,sans-serif;font-size:8px;color:${textC}">&#10003; Verified by <a href="${VERIFICATION_URL}" target="_blank" rel="noopener noreferrer" style="color:#534AB7;text-decoration:underline;font-weight:600">Media Blast Boosters</a></span>` : ""}</div>`;
+  const counter = config.outletCounter ? `<span style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:.18em;color:${textC};font-weight:500">AND OVER ${OUTLET_COUNT[tier]} NEWS SITES</span>` : "";
+  const verif   = config.verificationBadge ? `<span style="font-family:Arial,sans-serif;font-size:8px;color:${textC};margin-top:5px;display:block">&#10003; Verified by <a href="${VERIFICATION_URL}" target="_blank" rel="noopener noreferrer" style="color:#534AB7;text-decoration:underline;font-weight:600">Media Blast Boosters</a></span>` : "";
+  const footer  = `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:8px">${counter}${verif}</div>`;
   const logosHTML = logos.map(logoEl).join("");
 
   if (isSlider) {
