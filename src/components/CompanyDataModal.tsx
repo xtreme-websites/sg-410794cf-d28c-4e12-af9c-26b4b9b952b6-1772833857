@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { callGemini } from "../lib/ai";
 import { SUPABASE_URL } from "../lib/supabase";
 import { CompanyData, EMPTY_COMPANY } from "../lib/constants";
@@ -24,6 +24,16 @@ export default function CompanyDataModal({ isOpen, onClose, companyData, onSave,
   const [crawlStatus,     setCrawlStatus]     = useState("");
   const [crawlPages,      setCrawlPages]      = useState<CrawlPage[]>([]);
 
+  // Sync draft with current companyData every time the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCdDraft({ ...companyData });
+      setAiCrawlUrl(companyData.websiteUrl || "");
+      setCdMode(companyData.name ? "manual" : "ai");
+      setCrawlError(null);
+      setCrawlPages([]);
+    }
+  }, [isOpen]);
 
   const crawlWebsite = async () => {
     const rawUrl = aiCrawlUrl.trim().replace(/\/$/, "");
