@@ -1,33 +1,54 @@
-// All Supabase calls go through the supabase-proxy edge function,
-// which runs server-side on Supabase's own infrastructure (no allowlist issue).
 export const SUPABASE_URL  = "https://rsaoscgotumlvsbzwdiy.supabase.co";
-export const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzYW9zY2dvdHVtbHZzYnp3ZGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NTkwNzAsImV4cCI6MjA4ODQzNTA3MH0.eZfmlFg-bg_g5uWruw2xBDFTIvmxHV1lAHrKQdv8aSk";
+export const SUPABASE_ANON = "sb_publishable_Yo7e6dxrIaya7Q5-TurGLA_Zk9Tuheq";
 
-const PROXY = `${SUPABASE_URL}/functions/v1/supabase-proxy`;
-
-const call = async (body: Record<string, unknown>) => {
-  const res  = await fetch(PROXY, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-};
+const _headers = (extra: Record<string, string> = {}) => ({
+  "apikey": SUPABASE_ANON,
+  "Authorization": `Bearer ${SUPABASE_ANON}`,
+  "Content-Type": "application/json",
+  "Prefer": "return=representation",
+  ...extra,
+});
 
 export const supabase = {
   from: (table: string) => ({
     select: (cols = "*") => ({
       eq: (col: string, val: string) => ({
-        order: (orderCol: string, { ascending }: { ascending?: boolean } = {}) => ({
+        order: (col2: string, { ascending }: { ascending?: boolean } = {}) => ({
           limit: (n: number) => ({
-            single: () => call({ table, operation: "select", select: cols, eq: { [col]: val }, order: { col: orderCol, ascending }, limit: n }),
+            single: async () => {
+              const asc = ascending ? "asc" : "desc";
+              const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/${table}?select=${cols}&${col}=eq.${val}&order=${col2}.${asc}&limit=${n}`,
+                { headers: _headers() }
+              );
+              const data = await res.json();
+              return { data: Array.isArray(data) ? data[0] ?? null : null, error: null };
+            },
           }),
         }),
       }),
     }),
-    insert: (row: Record<string, unknown>) =>
-      call({ table, operation: "insert", data: row }),
-    upsert: (row: Record<string, unknown>, { onConflict }: { onConflict?: string } = {}) =>
-      call({ table, operation: "upsert", data: row, onConflict }),
+    insert: async (row: Record<string, unknown>) => {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: "POST",
+        headers: _headers(),
+        body: JSON.stringify(row),
+      });
+      const data = await res.json();
+      return { data, error: res.ok ? null : data };
+    },
+    upsert: async (
+      row: Record<string, unknown>,
+      { onConflict }: { onConflict?: string } = {}
+    ) => {
+      const qs = onConflict ? `?on_conflict=${onConflict}` : "";
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${qs}`, {
+        method: "POST",
+        headers: _headers({ "Prefer": "resolution=merge-duplicates,return=representation" }),
+        body: JSON.stringify(row),
+      });
+      const data = await res.json();
+      return { data, error: res.ok ? null : data };
+    },
   }),
 };
