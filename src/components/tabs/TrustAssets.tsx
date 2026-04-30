@@ -144,12 +144,12 @@ function BadgePreview({ config, logos, tier, scale = 1 }: { config: BadgeConfig;
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: `${6*scale}px` }}>
-          {config.showLaurels && <Laurel lc={leafC}/>}
-          <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: `${14*scale}px`, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+          {config.showLaurels && <div style={{ marginRight: `${50*scale}px`, flexShrink: 0 }}><Laurel lc={leafC}/></div>}
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: `${14*scale}px`, flexWrap: "wrap" }}>
             {logos.map(l => <LogoEl key={l.id} logo={l} color={lc} scale={scale}/>)}
           </div>
-          {config.showLaurels && <Laurel flip lc={leafC}/>}
+          {config.showLaurels && <div style={{ marginLeft: `${50*scale}px`, flexShrink: 0 }}><Laurel flip lc={leafC}/></div>}
         </div>
       )}
 
@@ -193,7 +193,7 @@ function generateEmbedHTML(config: BadgeConfig, logos: LogoDef[], tier: Tier): s
     const loopLogos = Array(6).fill(null).flatMap(() => logos).map(logoEl).join("");
     return `<style>@keyframes ${animId}{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}</style><div style="background:${bg};border-radius:6px;padding:12px 0;overflow:hidden">${header}<div style="overflow:hidden;-webkit-mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent);mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent)"><div style="display:flex;align-items:center;gap:40px;animation:${animId} ${config.sliderSpeed}s linear infinite;width:max-content;padding:4px 0">${loopLogos}</div></div>${footer}</div>`;
   }
-  const logoRow = `<div style="display:flex;align-items:center;gap:6px">${config.showLaurels ? laurelSVG(false) : ""}<div style="flex:1;display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap">${logosHTML}</div>${config.showLaurels ? laurelSVG(true) : ""}</div>`;
+  const logoRow = `<div style="display:flex;justify-content:center;align-items:center">${config.showLaurels ? `<div style="margin-right:50px;flex-shrink:0">${laurelSVG(false)}</div>` : ""}<div style="display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap">${logosHTML}</div>${config.showLaurels ? `<div style="margin-left:50px;flex-shrink:0">${laurelSVG(true)}</div>` : ""}</div>`;
   return `<div style="background:${bg};border-radius:6px;padding:12px 8px">${header}${logoRow}${footer}</div>`;
 }
 
