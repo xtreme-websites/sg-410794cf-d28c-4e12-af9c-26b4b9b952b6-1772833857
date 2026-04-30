@@ -54,7 +54,7 @@ const TABS = [
   { id: "competitor", icon: <BarIcon size={15}/>,    label: "Competitor Analysis" },
   { id: "widgets",    icon: <ShieldIcon size={15}/>, label: "Trust Assets"        },
   { id: "pr",         icon: <BriefIcon size={15}/>,  label: "PR Creator"          },
-  { id: "orders",     icon: <CartIcon size={15}/>,   label: "Orders"              },
+  { id: "orders",     icon: <CartIcon size={15}/>,   label: "PR Orders"           },
 ];
 
 export default function PRDashboard() {
@@ -144,20 +144,20 @@ export default function PRDashboard() {
 
       {/* ══ LEFT SIDEBAR ══════════════════════════════════════════════════════ */}
       <aside style={{
-        width: 220, flexShrink: 0, display: "flex", flexDirection: "column",
+        width: 250, flexShrink: 0, display: "flex", flexDirection: "column",
         background: "linear-gradient(90deg, rgba(137,41,189,1) 0%, rgba(38,32,105,1) 35%)",
         minHeight: "100vh", position: "sticky", top: 0, height: "100vh",
         boxShadow: "4px 0 24px rgba(0,0,0,.25)", zIndex: 30,
       }}>
 
         {/* Logo */}
-        <div style={{ padding: "1.25rem 1.1rem 1rem", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: ".55rem" }}>
-            <div style={{ background: "rgba(255,255,255,.15)", borderRadius: ".45rem", padding: ".38rem", display: "flex", flexShrink: 0 }}>
-              <ZapIcon size={16}/>
+        <div style={{ padding: "1rem 1.1rem .85rem", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
+            <div style={{ background: "white", borderRadius: ".45rem", padding: ".25rem", display: "flex", flexShrink: 0, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
+              <img src="/logo.png" alt="MBB" style={{ width: 28, height: 28, objectFit: "contain" }}/>
             </div>
-            <span className="font-display" style={{ color: "white", fontWeight: 800, fontSize: ".88rem", letterSpacing: "-.01em", lineHeight: 1.2 }}>
-              Media Blast<br/>Boosters<span style={{ color: "rgba(255,255,255,.6)", fontSize: ".6rem", fontWeight: 700, marginLeft: ".15rem" }}>™</span>
+            <span className="font-display" style={{ color: "white", fontWeight: 800, fontSize: "16px", letterSpacing: "-.01em", whiteSpace: "nowrap" }}>
+              Media Blast Boosters<span style={{ color: "rgba(255,255,255,.6)", fontSize: ".65rem", fontWeight: 700, marginLeft: ".15rem", verticalAlign: "super" }}>™</span>
             </span>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function PRDashboard() {
           >
             <BuildingIcon size={15}/>
             Company Data
-            {hasCompanyData && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", flexShrink: 0, marginLeft: "auto" }}/>}
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: hasCompanyData ? "#34d399" : "#f87171", flexShrink: 0, marginLeft: "auto" }}/>
           </button>
 
           <button onClick={() => setShowSettings(true)} style={{
