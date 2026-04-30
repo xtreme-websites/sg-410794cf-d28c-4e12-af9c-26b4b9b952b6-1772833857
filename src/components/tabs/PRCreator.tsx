@@ -237,12 +237,57 @@ Make it genuinely newsworthy and professionally written.`;
                     contentEditable
                     suppressContentEditableWarning
                     onInput={e => setExternalRef((e.currentTarget as HTMLDivElement).innerHTML)}
+                    onPaste={e => {
+                      e.preventDefault();
+                      const html = e.clipboardData.getData("text/html");
+                      const plain = e.clipboardData.getData("text/plain");
+
+                      let cleaned = "";
+                      if (html) {
+                        const doc = new DOMParser().parseFromString(html, "text/html");
+
+                        // Remove Word namespace / meta junk
+                        doc.querySelectorAll("o\\:p, w\\:sdt, w\\:sdtContent, xml, meta, style, link").forEach(el => el.remove());
+
+                        // Strip every inline style and Word class (MsoNormal, etc.)
+                        doc.querySelectorAll("[style]").forEach(el => el.removeAttribute("style"));
+                        doc.querySelectorAll("[class]").forEach(el => el.removeAttribute("class"));
+                        doc.querySelectorAll("[lang]").forEach(el => el.removeAttribute("lang"));
+
+                        // Remove empty block elements Word uses as spacers
+                        // Catches <p></p>, <p> </p>, <p>&nbsp;</p>, <p><br></p>
+                        doc.querySelectorAll("p, div, span").forEach(el => {
+                          const txt = el.textContent?.replace(/[\u00A0\s]/g, "") ?? "";
+                          const hasOnlyBr = el.children.length === 1 && el.children[0].tagName === "BR";
+                          if (txt === "" && !hasOnlyBr && el.childNodes.length <= 1) el.remove();
+                        });
+
+                        // Unwrap meaningless spans (no bold/italic/underline/link inside)
+                        doc.querySelectorAll("span").forEach(span => {
+                          if (!span.querySelector("a, b, strong, i, em, u")) {
+                            span.replaceWith(...Array.from(span.childNodes));
+                          }
+                        });
+
+                        cleaned = doc.body.innerHTML
+                          // collapse sequences of whitespace-only block elements Word leaves behind
+                          .replace(/(<p[^>]*>\s*<\/p>\s*)+/gi, "")
+                          .replace(/(<div[^>]*>\s*<\/div>\s*)+/gi, "")
+                          .trim();
+                      } else {
+                        // Plain-text fallback: wrap each paragraph in <p>
+                        cleaned = plain.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+                      }
+
+                      document.execCommand("insertHTML", false, cleaned);
+                      if (externalRefEl.current) setExternalRef(externalRefEl.current.innerHTML);
+                    }}
                     data-placeholder="Paste a previous press release, news article, or any reference content here. Formatting from Word (bold, italics, headers, links) will be preserved. AI will use it as a style and structure guide — writing completely original content for your company."
                     className="field-input"
                     style={{
                       minHeight: "160px", lineHeight: 1.6, fontSize: ".82rem",
                       overflowY: "auto", maxHeight: "320px",
-                      cursor: "text", whiteSpace: "pre-wrap",
+                      cursor: "text",
                     }}
                   />
                   <style>{`
@@ -250,16 +295,18 @@ Make it genuinely newsworthy and professionally written.`;
                       content: attr(data-placeholder);
                       color: #94a3b8;
                       pointer-events: none;
+                      display: block;
                     }
                     [contenteditable] b, [contenteditable] strong { font-weight: 700; }
                     [contenteditable] i, [contenteditable] em { font-style: italic; }
+                    [contenteditable] u { text-decoration: underline; }
                     [contenteditable] a { color: #4f46e5; text-decoration: underline; }
                     [contenteditable] h1 { font-size: 1.3rem; font-weight: 700; margin: .5rem 0 .2rem; }
                     [contenteditable] h2 { font-size: 1.1rem; font-weight: 700; margin: .4rem 0 .15rem; }
                     [contenteditable] h3 { font-size: .95rem; font-weight: 700; margin: .35rem 0 .1rem; }
                     [contenteditable] p  { margin: 0; line-height: 1.55; }
-                    [contenteditable] p + p { margin-top: .3rem; }
-                    [contenteditable] p > br:only-child { display: none; }
+                    [contenteditable] p + p { margin-top: .35rem; }
+                    [contenteditable] div + div { margin-top: .35rem; }
                     [contenteditable] ul { padding-left: 1.25rem; list-style: disc; margin: .25rem 0; }
                     [contenteditable] ol { padding-left: 1.25rem; list-style: decimal; margin: .25rem 0; }
                     [contenteditable] li { margin-bottom: .15rem; }
