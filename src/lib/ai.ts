@@ -1,3 +1,5 @@
+const EDGE_URL = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/claude-websearch";
+
 // ─── Storage wrapper: window.storage (Claude sandbox) → localStorage (Vercel) ─
 export const store = {
   get: async (key: string): Promise<string | null> => {
@@ -21,60 +23,34 @@ export const store = {
   },
 };
 
-// ─── Claude API (standard completion) ────────────────────────────────────────
+// ─── Standard Claude completion (routed through edge function) ─────────────────
 export async function callClaude(
   userContent: string,
   system = "",
   maxTokens = 1000,
-  apiKey = ""
+  _apiKey = ""  // kept for signature compat — key lives in Supabase secret
 ): Promise<string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
-  if (apiKey) headers["x-api-key"] = apiKey;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch(EDGE_URL, {
     method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: maxTokens,
-      ...(system ? { system } : {}),
-      messages: [{ role: "user", content: userContent }],
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode: "completion", prompt: userContent, system, maxTokens }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content[0].text;
+  if (data.error) throw new Error(data.error);
+  return data.text;
 }
 
-// ─── Claude with web_search tool (for website crawling) ──────────────────────
-export async function callGemini(prompt: string, apiKey = ""): Promise<string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
-  if (apiKey) headers["x-api-key"] = apiKey;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+// ─── Claude with web_search tool (routed through edge function) ───────────────
+export async function callGemini(
+  prompt: string,
+  _apiKey = ""  // kept for signature compat — key lives in Supabase secret
+): Promise<string> {
+  const res = await fetch(EDGE_URL, {
     method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: prompt }],
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  const text = (data.content ?? [])
-    .filter((b: any) => b.type === "text")
-    .map((b: any) => b.text)
-    .join("");
-  if (!text) throw new Error("Empty response");
-  return text;
+  if (data.error) throw new Error(data.error);
+  return data.text;
 }

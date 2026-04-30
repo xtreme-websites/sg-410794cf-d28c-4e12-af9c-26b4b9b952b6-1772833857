@@ -15,18 +15,15 @@ interface CompetitorData {
 interface CompetitorAnalysisProps {
   companyName: string;
   industry: string;
-  claudeApiKey: string;
   locationId: string;
   showToast: (msg: string, type?: "success" | "error") => void;
 }
 
-export default function CompetitorAnalysis({ companyName, industry, claudeApiKey, locationId, showToast }: CompetitorAnalysisProps) {
+export default function CompetitorAnalysis({ companyName, industry, locationId, showToast }: CompetitorAnalysisProps) {
   const [competitorData, setCompetitorData] = useState<CompetitorData | null>(null);
   const [isScanning,     setIsScanning]     = useState(false);
   const [marketError,    setMarketError]    = useState<string | null>(null);
 
-  const ai = (content: string, system = "", tokens = 1000) =>
-    callClaude(content, system, tokens, claudeApiKey);
 
   const scanMarket = async () => {
     if (!companyName.trim() || !industry.trim()) {
@@ -34,7 +31,7 @@ export default function CompetitorAnalysis({ companyName, industry, claudeApiKey
     }
     setIsScanning(true); setMarketError(null); setCompetitorData(null);
     try {
-      const text = await ai(
+      const text = await callClaude(
         `Analyze competitive PR landscape for "${companyName}" in "${industry}". Use 3 real named competitors. Return ONLY this JSON:
 {"userCompany":{"name":"${companyName}","scores":{"aiCitation":72,"mediaAuthority":65,"newsVolume":58,"sentimentPositivity":80,"topicLeadership":61}},"competitors":[{"name":"CompetitorName","scores":{"aiCitation":85,"mediaAuthority":78,"newsVolume":70,"sentimentPositivity":75,"topicLeadership":82},"trend":"up","gapAnalysis":"One sentence describing where they outperform you"}],"competitiveIntelligence":["Actionable insight 1","Actionable insight 2","Actionable insight 3","Actionable insight 4","Actionable insight 5"]}
 Replace example numbers with realistic varied scores 0-100. Include exactly 3 competitors.`,

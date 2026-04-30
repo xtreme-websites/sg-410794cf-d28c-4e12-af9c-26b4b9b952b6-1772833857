@@ -37,7 +37,6 @@ interface PRFormData {
 
 interface PRCreatorProps {
   companyData: CompanyData;
-  claudeApiKey: string;
   customPRPrompt: string;
   selectedTopic: (Topic & { selectedIdea?: string }) | null;
   onClearTopic: () => void;
@@ -48,7 +47,7 @@ interface PRCreatorProps {
 }
 
 export default function PRCreator({
-  companyData, claudeApiKey, customPRPrompt,
+  companyData, customPRPrompt,
   selectedTopic, onClearTopic, onNavigateToTopics,
   onOpenCompanyData, onPlaceOrder, showToast,
 }: PRCreatorProps) {
@@ -69,8 +68,6 @@ export default function PRCreator({
 
   const { name: companyName, industry, websiteUrl: siteUrl, quoteAttribution } = companyData;
 
-  const ai = (content: string, system = "", tokens = 1000) =>
-    callClaude(content, system, tokens, claudeApiKey);
 
   const generatePressRelease = async () => {
     if (!prFormData.about.trim() || !prFormData.quote.trim()) {
@@ -97,7 +94,7 @@ CONTENT: ${about}
 QUOTE: "${quote}" — ${quoteAttribution || "Company Spokesperson"}${videoUrl ? `\nVIDEO REFERENCE: ${videoUrl}` : ""}
 FORMAT with HTML tags: <h1> headline, <p><strong>FOR IMMEDIATE RELEASE</strong></p>, dateline paragraph, 3-4 body paragraphs, quote with <em>, <h2>About ${companyName || "Company"}</h2> with description, <h2>Contact Information</h2> with ${contact || siteUrl || "contact details"}.
 Make it genuinely newsworthy and professionally written.`;
-      const text = await ai(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
+      const text = await callClaude(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
       setGeneratedPR(text);
       setShowGeneratedView(true);
       showToast("Press release generated!");
@@ -111,7 +108,7 @@ Make it genuinely newsworthy and professionally written.`;
     if (!refinementInstructions.trim() || refinementCount >= 5) return;
     setIsLoading(true);
     try {
-      const text = await ai(
+      const text = await callClaude(
         `Refine this press release per these instructions: "${refinementInstructions}"\n\nCurrent press release:\n${generatedPR}\n\nReturn the complete refined version in proper HTML.`,
         "You are an expert PR editor. Apply the requested changes while maintaining professional quality.",
         2000
@@ -257,13 +254,15 @@ Make it genuinely newsworthy and professionally written.`;
                     [contenteditable] b, [contenteditable] strong { font-weight: 700; }
                     [contenteditable] i, [contenteditable] em { font-style: italic; }
                     [contenteditable] a { color: #4f46e5; text-decoration: underline; }
-                    [contenteditable] h1 { font-size: 1.3rem; font-weight: 700; margin: .5rem 0 .25rem; }
-                    [contenteditable] h2 { font-size: 1.1rem; font-weight: 700; margin: .5rem 0 .25rem; }
-                    [contenteditable] h3 { font-size: .95rem; font-weight: 700; margin: .4rem 0 .2rem; }
-                    [contenteditable] ul { padding-left: 1.25rem; list-style: disc; }
-                    [contenteditable] ol { padding-left: 1.25rem; list-style: decimal; }
-                    [contenteditable] li { margin-bottom: .2rem; }
-                    [contenteditable] p  { margin-bottom: .4rem; }
+                    [contenteditable] h1 { font-size: 1.3rem; font-weight: 700; margin: .5rem 0 .2rem; }
+                    [contenteditable] h2 { font-size: 1.1rem; font-weight: 700; margin: .4rem 0 .15rem; }
+                    [contenteditable] h3 { font-size: .95rem; font-weight: 700; margin: .35rem 0 .1rem; }
+                    [contenteditable] p  { margin: 0; line-height: 1.55; }
+                    [contenteditable] p + p { margin-top: .3rem; }
+                    [contenteditable] p > br:only-child { display: none; }
+                    [contenteditable] ul { padding-left: 1.25rem; list-style: disc; margin: .25rem 0; }
+                    [contenteditable] ol { padding-left: 1.25rem; list-style: decimal; margin: .25rem 0; }
+                    [contenteditable] li { margin-bottom: .15rem; }
                   `}</style>
                   {externalRef.replace(/<[^>]*>/g, "").trim() && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: ".35rem" }}>
@@ -360,7 +359,7 @@ Make it genuinely newsworthy and professionally written.`;
                 <button type="button" disabled={enhancingAbout || !prFormData.about.trim()} onClick={async () => {
                   setEnhancingAbout(true);
                   try {
-                    const result = await ai(`Rewrite the following press release topic/description to be professional, clear, and compelling. Fix grammar, improve structure, expand if too short (aim for 3-5 sentences), and make it suitable for a press release. Return ONLY the improved text, no commentary:\n\n${prFormData.about}`, "You are a professional PR copywriter. Return only the improved text.");
+                    const result = await callClaude(`Rewrite the following press release topic/description to be professional, clear, and compelling. Fix grammar, improve structure, expand if too short (aim for 3-5 sentences), and make it suitable for a press release. Return ONLY the improved text, no commentary:\n\n${prFormData.about}`, "You are a professional PR copywriter. Return only the improved text.");
                     setPrFormData(p => ({ ...p, about: result.trim() }));
                   } catch { showToast("Enhancement failed — check API key", "error"); }
                   setEnhancingAbout(false);
@@ -378,7 +377,7 @@ Make it genuinely newsworthy and professionally written.`;
                 <button type="button" disabled={enhancingQuote || !prFormData.quote.trim()} onClick={async () => {
                   setEnhancingQuote(true);
                   try {
-                    const result = await ai(`Rewrite the following executive quote to sound polished, authoritative, and press-release-ready. Fix grammar, improve vocabulary, make it confident and quotable (1-3 sentences). Return ONLY the improved quote text, no attribution, no quotation marks, no commentary:\n\n${prFormData.quote}`, "You are a professional PR copywriter. Return only the improved quote text.");
+                    const result = await callClaude(`Rewrite the following executive quote to sound polished, authoritative, and press-release-ready. Fix grammar, improve vocabulary, make it confident and quotable (1-3 sentences). Return ONLY the improved quote text, no attribution, no quotation marks, no commentary:\n\n${prFormData.quote}`, "You are a professional PR copywriter. Return only the improved quote text.");
                     setPrFormData(p => ({ ...p, quote: result.trim().replace(/^[""]|[""]$/g, "") }));
                   } catch { showToast("Enhancement failed — check API key", "error"); }
                   setEnhancingQuote(false);

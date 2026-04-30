@@ -9,13 +9,12 @@ interface CompanyDataModalProps {
   onClose: () => void;
   companyData: CompanyData;
   onSave: (data: CompanyData) => Promise<void>;
-  claudeApiKey: string;
   showToast: (msg: string, type?: "success" | "error") => void;
 }
 
 type CrawlPage = { path: string; label: string; status: "loading" | "ok" | "skip" };
 
-export default function CompanyDataModal({ isOpen, onClose, companyData, onSave, claudeApiKey, showToast }: CompanyDataModalProps) {
+export default function CompanyDataModal({ isOpen, onClose, companyData, onSave, showToast }: CompanyDataModalProps) {
   const [cdMode,          setCdMode]          = useState<"ai" | "manual">("ai");
   const [cdDraft,         setCdDraft]         = useState<CompanyData>({ ...EMPTY_COMPANY });
   const [aiCrawlUrl,      setAiCrawlUrl]      = useState("");
@@ -25,7 +24,6 @@ export default function CompanyDataModal({ isOpen, onClose, companyData, onSave,
   const [crawlStatus,     setCrawlStatus]     = useState("");
   const [crawlPages,      setCrawlPages]      = useState<CrawlPage[]>([]);
 
-  const aiW = (prompt: string) => callGemini(prompt, claudeApiKey);
 
   const crawlWebsite = async () => {
     const rawUrl = aiCrawlUrl.trim().replace(/\/$/, "");
@@ -61,7 +59,7 @@ export default function CompanyDataModal({ isOpen, onClose, companyData, onSave,
     const urlList = allPages.map(p => rawUrl + p.path);
     const prompt = `Please visit and read the following URL(s) to extract company information.\n\nThese are pages from the company website. Prioritise: Home for company name/industry, About for company description, Services for list of services, Contact for address/phone/email. For the Blog/News page, look ONLY for the author name in byline elements.\n\nURLs to visit:\n${urlList.map((u, i) => `${i + 1}. ${u}`).join("\n")}\n\nExtract and return ONLY this JSON (empty string "" for anything not found — never null or invented data):\n{\n  "name": "Company name",\n  "industry": "Industry or sector",\n  "websiteUrl": "${rawUrl}",\n  "quoteAttribution": "Full Name — Title, Company (find owner/CEO/founder from About page, or from blog post bylines)",\n  "about": "2-3 sentence company description",\n  "services": "Comma-separated list of main services or products",\n  "address": "Full street address (from Contact page only)",\n  "phone": "Phone number (from Contact page only)",\n  "email": "Contact email"\n}`;
     try {
-      const text = await aiW(prompt);
+      const text = await callGemini(prompt);
       const clean = text.replace(/```json|```/g, "").trim();
       const jsonStr = clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1);
       const parsed  = JSON.parse(jsonStr);

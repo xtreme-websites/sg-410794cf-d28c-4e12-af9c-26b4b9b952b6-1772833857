@@ -61,7 +61,6 @@ export default function PRDashboard() {
   // ── Persistent / shared state ─────────────────────────────────────────────
   const [companyData,    setCompanyData]    = useState<CompanyData>(EMPTY_COMPANY);
   const [dataLoaded,     setDataLoaded]     = useState(false);
-  const [claudeApiKey,   setClaudeApiKey]   = useState("");
   const [webhookUrl,     setWebhookUrl]     = useState("");
   const [customPRPrompt, setCustomPRPrompt] = useState("");
   const [orders,         setOrders]         = useState<Order[]>([]);
@@ -89,7 +88,6 @@ export default function PRDashboard() {
   // ── Bootstrap: load settings + company profile + orders ───────────────────
   useEffect(() => {
     (async () => {
-      try { const r = await store.get("mbb:claudeKey"); if (r) setClaudeApiKey(r); } catch {}
       try { const r = await store.get("mbb:webhookUrl"); if (r) setWebhookUrl(r); } catch {}
       try {
         const { data } = await supabase.from("company_profiles").select("*")
@@ -184,17 +182,17 @@ export default function PRDashboard() {
           </div>
         )}
 
-        {activeTab === "topics"     && <TrendingTopics companyData={companyData} claudeApiKey={claudeApiKey} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
-        {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} claudeApiKey={claudeApiKey} locationId={locationId} showToast={showToast}/>}
+        {activeTab === "topics"     && <TrendingTopics companyData={companyData} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
+        {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
         {activeTab === "widgets"    && <TrustAssets showToast={showToast}/>}
-        {activeTab === "pr"         && <PRCreator companyData={companyData} claudeApiKey={claudeApiKey} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} showToast={showToast}/>}
+        {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} showToast={showToast}/>}
         {activeTab === "orders"     && <Orders orders={orders} showThankYou={showThankYou} onNavigateToPR={() => setActiveTab("pr")}/>}
       </main>
 
       {/* ══ MODALS ════════════════════════════════════════════════════════════ */}
-      <CompanyDataModal isOpen={showCompanyData} onClose={() => setShowCompanyData(false)} companyData={companyData} onSave={saveCompanyData} claudeApiKey={claudeApiKey} showToast={showToast}/>
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} claudeApiKey={claudeApiKey} webhookUrl={webhookUrl} customPRPrompt={customPRPrompt}
-        onSave={({ claudeApiKey: k, webhookUrl: w, customPRPrompt: p }) => { setClaudeApiKey(k); setWebhookUrl(w); setCustomPRPrompt(p); }} showToast={showToast}/>
+      <CompanyDataModal isOpen={showCompanyData} onClose={() => setShowCompanyData(false)} companyData={companyData} onSave={saveCompanyData} showToast={showToast}/>
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} webhookUrl={webhookUrl} customPRPrompt={customPRPrompt}
+        onSave={({ webhookUrl: w, customPRPrompt: p }) => { setWebhookUrl(w); setCustomPRPrompt(p); }} showToast={showToast}/>
 
       {/* ══ TOAST ═════════════════════════════════════════════════════════════ */}
       {toast && (

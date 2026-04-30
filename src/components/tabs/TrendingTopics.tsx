@@ -7,12 +7,11 @@ import { NewsIcon, ZapIcon, SearchIcon, LoaderIcon, ExternalLinkIcon, AlertIcon 
 
 interface TrendingTopicsProps {
   companyData: CompanyData;
-  claudeApiKey: string;
   showToast: (msg: string, type?: "success" | "error") => void;
   onTopicSelect: (topic: Topic & { selectedIdea?: string }) => void;
 }
 
-export default function TrendingTopics({ companyData, claudeApiKey, showToast, onTopicSelect }: TrendingTopicsProps) {
+export default function TrendingTopics({ companyData, showToast, onTopicSelect }: TrendingTopicsProps) {
   const [trendingTopics,   setTrendingTopics]   = useState<Topic[]>([]);
   const [topicsPage,       setTopicsPage]       = useState(0);
   const [topicsFetched,    setTopicsFetched]    = useState(0);
@@ -23,15 +22,13 @@ export default function TrendingTopics({ companyData, claudeApiKey, showToast, o
 
   const { industry, services } = companyData;
 
-  const ai = (content: string, system = "", tokens = 1000) =>
-    callClaude(content, system, tokens, claudeApiKey);
 
   const generateContentIdeas = async (topic: Topic) => {
     const tid = topic.title;
     setShowContentIdeas(p => ({ ...p, [tid]: true }));
     if (contentIdeas[tid]) return;
     try {
-      const text = await ai(
+      const text = await callClaude(
         `For the topic "${topic.title}" in the ${industry || "business"} industry, generate 4 compelling press release angles for ${companyData.name || "a company"}. Return ONLY a JSON array of 4 short headline strings.`,
         "Return ONLY a JSON array of 4 strings. No markdown."
       );
