@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { callClaude } from "../../lib/ai";
 import { CompanyData, Topic, PR_PACKAGES, FOCUS_OPTIONS, THEME_OPTIONS } from "../../lib/constants";
 import { SparklesIcon, LoaderIcon, BackIcon, ClipboardIcon, CopyIcon, CheckIcon, XIcon, UploadIcon, BriefIcon } from "../icons";
@@ -65,6 +65,7 @@ export default function PRCreator({
   const [showThemeDropdown,    setShowThemeDropdown]    = useState(false);
   const [refMode,              setRefMode]              = useState<"topic" | "external">("topic");
   const [externalRef,          setExternalRef]          = useState("");
+  const externalRefEl = useRef<HTMLDivElement>(null);
 
   const { name: companyName, industry, websiteUrl: siteUrl, quoteAttribution } = companyData;
 
@@ -234,17 +235,45 @@ Make it genuinely newsworthy and professionally written.`;
                 )
               ) : (
                 <div>
-                  <textarea
-                    value={externalRef}
-                    onChange={e => setExternalRef(e.target.value)}
-                    placeholder="Paste a previous press release, news article, or any reference content here. AI will use it as a style and structure guide — adapting the format and tone for your company while writing completely original content."
+                  <div
+                    ref={externalRefEl}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={e => setExternalRef((e.currentTarget as HTMLDivElement).innerHTML)}
+                    data-placeholder="Paste a previous press release, news article, or any reference content here. Formatting from Word (bold, italics, headers, links) will be preserved. AI will use it as a style and structure guide — writing completely original content for your company."
                     className="field-input"
-                    style={{ height: "160px", resize: "vertical", lineHeight: 1.6, fontSize: ".82rem" }}
+                    style={{
+                      minHeight: "160px", lineHeight: 1.6, fontSize: ".82rem",
+                      overflowY: "auto", maxHeight: "320px",
+                      cursor: "text", whiteSpace: "pre-wrap",
+                    }}
                   />
-                  {externalRef.trim() && (
+                  <style>{`
+                    [contenteditable]:empty:before {
+                      content: attr(data-placeholder);
+                      color: #94a3b8;
+                      pointer-events: none;
+                    }
+                    [contenteditable] b, [contenteditable] strong { font-weight: 700; }
+                    [contenteditable] i, [contenteditable] em { font-style: italic; }
+                    [contenteditable] a { color: #4f46e5; text-decoration: underline; }
+                    [contenteditable] h1 { font-size: 1.3rem; font-weight: 700; margin: .5rem 0 .25rem; }
+                    [contenteditable] h2 { font-size: 1.1rem; font-weight: 700; margin: .5rem 0 .25rem; }
+                    [contenteditable] h3 { font-size: .95rem; font-weight: 700; margin: .4rem 0 .2rem; }
+                    [contenteditable] ul { padding-left: 1.25rem; list-style: disc; }
+                    [contenteditable] ol { padding-left: 1.25rem; list-style: decimal; }
+                    [contenteditable] li { margin-bottom: .2rem; }
+                    [contenteditable] p  { margin-bottom: .4rem; }
+                  `}</style>
+                  {externalRef.replace(/<[^>]*>/g, "").trim() && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: ".35rem" }}>
-                      <span style={{ fontSize: ".72rem", color: "#94a3b8" }}>{externalRef.trim().split(/\s+/).length} words pasted</span>
-                      <button onClick={() => setExternalRef("")} style={{ fontSize: ".72rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
+                      <span style={{ fontSize: ".72rem", color: "#94a3b8" }}>
+                        {externalRef.replace(/<[^>]*>/g, "").trim().split(/\s+/).length} words pasted
+                      </span>
+                      <button onClick={() => {
+                        setExternalRef("");
+                        if (externalRefEl.current) externalRefEl.current.innerHTML = "";
+                      }} style={{ fontSize: ".72rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
                     </div>
                   )}
                 </div>
@@ -388,7 +417,7 @@ Make it genuinely newsworthy and professionally written.`;
               <button onClick={generatePressRelease} disabled={isLoading} className="btn-primary" style={{ flex: 1, justifyContent: "center", padding: ".8rem" }}>
                 {isLoading ? <><LoaderIcon size={16}/> Generating...</> : <><SparklesIcon size={16}/> Generate Press Release</>}
               </button>
-              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null }); onClearTopic(); setExternalRef(""); showToast("Form cleared"); }} className="btn-secondary">Clear</button>
+              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null }); onClearTopic(); setExternalRef(""); if (externalRefEl.current) externalRefEl.current.innerHTML = ""; showToast("Form cleared"); }} className="btn-secondary">Clear</button>
             </div>
           </div>
         </div>
