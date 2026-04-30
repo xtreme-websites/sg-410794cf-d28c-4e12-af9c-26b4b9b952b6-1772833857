@@ -229,9 +229,10 @@ export default function TrustAssets({ orders, locationId, showToast }: TrustAsse
   const [showModal,   setShowModal]   = useState(false);
   const [editingId,   setEditingId]   = useState<string | null>(null);
   const [draft,       setDraft]       = useState<BadgeConfig>({ id: "", name: "", ...EMPTY_CONFIG });
-  const [verifyUrl,   setVerifyUrl]   = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verifyStatus, setVerifyStatus] = useState<null | "blocked" | "found">(null);
+  const [verifyUrl,    setVerifyUrl]    = useState("");
+  const [isVerifying,  setIsVerifying]  = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<null | "found" | "not-found" | "error">(null);
+  const [verifyReason, setVerifyReason] = useState("");
 
   useEffect(() => {
     const rank: Record<string, number> = { Starter: 1, Standard: 2, Premium: 3 };
@@ -288,6 +289,29 @@ export default function TrustAssets({ orders, locationId, showToast }: TrustAsse
   };
 
   const d = (key: keyof BadgeConfig, val: unknown) => setDraft(p => ({ ...p, [key]: val }));
+
+  const runVerify = async () => {
+    setIsVerifying(true); setVerifyStatus(null); setVerifyReason("");
+    try {
+      const res = await fetch("https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/verify-badge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: verifyUrl.trim() }),
+      });
+      const data = await res.json();
+      if (data.found) {
+        setVerifyStatus("found");
+        showToast("Badge verified!");
+      } else {
+        setVerifyStatus("not-found");
+        setVerifyReason(data.reason || "Badge not found on page.");
+      }
+    } catch (e: any) {
+      setVerifyStatus("error");
+      setVerifyReason(e.message || "Request failed.");
+    }
+    setIsVerifying(false);
+  };
 
   return (
     <div className="animate-fadein">
@@ -353,22 +377,30 @@ export default function TrustAssets({ orders, locationId, showToast }: TrustAsse
       {/* Widget Health Check */}
       <div className="card" style={{ padding:"1.25rem", borderStyle:"dashed" }}>
         <h3 style={{ fontWeight:700, marginBottom:".25rem", display:"flex", alignItems:"center", gap:".5rem", fontSize:"1rem" }}><ShieldIcon size={18}/> Widget Health Check</h3>
-        <p style={{ fontSize:".82rem", color:"#64748b", marginBottom:"1rem" }}>Verify your trust badge is live on your website</p>
+        <p style={{ fontSize:".82rem", color:"#64748b", marginBottom:"1rem" }}>Enter your website URL to verify the trust badge is live</p>
         <div style={{ display:"flex", gap:".75rem", marginBottom:"1rem" }}>
-          <input type="url" value={verifyUrl} onChange={e => setVerifyUrl(e.target.value)} placeholder="https://yourwebsite.com" className="field-input" style={{ flex:1 }}/>
-          <button onClick={async () => { setIsVerifying(true); setVerifyStatus(null); await new Promise(r => setTimeout(r, 1800)); setVerifyStatus("blocked"); setIsVerifying(false); }} disabled={isVerifying || !verifyUrl.trim()} className="btn-primary" style={{ whiteSpace:"nowrap" }}>
+          <input type="url" value={verifyUrl} onChange={e => { setVerifyUrl(e.target.value); setVerifyStatus(null); }} placeholder="https://yourwebsite.com" className="field-input" style={{ flex:1 }}
+            onKeyDown={e => { if (e.key === "Enter" && verifyUrl.trim()) runVerify(); }}/>
+          <button onClick={runVerify} disabled={isVerifying || !verifyUrl.trim()} className="btn-primary" style={{ whiteSpace:"nowrap" }}>
             {isVerifying ? <><LoaderIcon size={15}/> Checking...</> : <><SearchIcon size={15}/> Verify</>}
           </button>
         </div>
-        {verifyStatus === "blocked" && (
-          <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:".5rem", padding:".875rem 1rem" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:".5rem", color:"#92400e", fontWeight:600, marginBottom:".5rem" }}><AlertIcon size={16}/> Automatic Verification Blocked</div>
-            <p style={{ fontSize:".8rem", color:"#78350f", marginBottom:".75rem" }}>Some sites block automated checks. Confirm manually by opening your site and checking for the badge.</p>
-            <button onClick={() => { setVerifyStatus("found"); showToast("Widget confirmed!"); }} style={{ background:"#d97706", color:"white", border:"none", borderRadius:".4rem", padding:".4rem .9rem", fontSize:".8rem", fontWeight:600, cursor:"pointer" }}>✓ Manually Confirm</button>
+        {verifyStatus === "found" && (
+          <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:".5rem", padding:".875rem 1rem", display:"flex", alignItems:"center", gap:".5rem", color:"#166534", fontWeight:600 }}>
+            <CheckIcon size={16}/> Badge detected and verified ✓
           </div>
         )}
-        {verifyStatus === "found" && (
-          <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:".5rem", padding:".875rem 1rem", display:"flex", alignItems:"center", gap:".5rem", color:"#166534", fontWeight:600 }}><CheckIcon size={16}/> Widget Live & Verified ✓</div>
+        {verifyStatus === "not-found" && (
+          <div style={{ background:"#fff1f2", border:"1px solid #fecdd3", borderRadius:".5rem", padding:".875rem 1rem" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:".5rem", color:"#be123c", fontWeight:600, marginBottom:".35rem" }}><AlertIcon size={16}/> Badge not detected</div>
+            <p style={{ fontSize:".8rem", color:"#9f1239", margin:0 }}>{verifyReason || "The embed code was not found on this page. Make sure you've pasted it and published the changes."}</p>
+          </div>
+        )}
+        {verifyStatus === "error" && (
+          <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:".5rem", padding:".875rem 1rem" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:".5rem", color:"#92400e", fontWeight:600, marginBottom:".35rem" }}><AlertIcon size={16}/> Could not check</div>
+            <p style={{ fontSize:".8rem", color:"#78350f", margin:0 }}>{verifyReason || "The site could not be reached or blocked the check."}</p>
+          </div>
         )}
       </div>
 
