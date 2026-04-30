@@ -153,9 +153,7 @@ export default function PRDashboard() {
         {/* Logo */}
         <div style={{ padding: "1rem 1.1rem .85rem", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
-            <div style={{ background: "white", borderRadius: ".45rem", padding: ".25rem", display: "flex", flexShrink: 0, width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
-              <img src="/logo.png" alt="MBB" style={{ width: 28, height: 28, objectFit: "contain" }}/>
-            </div>
+            <img src="/logo.png" alt="MBB" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }}/>
             <span className="font-display" style={{ color: "white", fontWeight: 800, fontSize: "16px", letterSpacing: "-.01em", whiteSpace: "nowrap" }}>
               Media Blast Boosters<span style={{ color: "rgba(255,255,255,.6)", fontSize: ".65rem", fontWeight: 700, marginLeft: ".15rem", verticalAlign: "super" }}>™</span>
             </span>
