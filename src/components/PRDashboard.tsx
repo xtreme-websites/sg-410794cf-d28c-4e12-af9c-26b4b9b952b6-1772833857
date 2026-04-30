@@ -139,55 +139,113 @@ export default function PRDashboard() {
   const hasCompanyData = !!(companyData.name || companyData.industry);
 
   return (
-    <div className="mbb-root" style={{ display:"flex",flexDirection:"column",minHeight:"100vh",background:"#f1f5f9" }}>
+    <div className="mbb-root" style={{ display:"flex", minHeight:"100vh", background:"#f1f5f9" }}>
       <GlobalStyles/>
 
-      {/* ══ HEADER ════════════════════════════════════════════════════════════ */}
-      <header style={{ background:"#0b1120",borderBottom:"1px solid #1e2d45",padding:"0 1.5rem",display:"flex",alignItems:"center",gap:"1.25rem",minHeight:"56px",position:"sticky",top:0,zIndex:30,boxShadow:"0 2px 16px rgba(0,0,0,.35)" }}>
-        <div style={{ display:"flex",alignItems:"center",gap:".6rem",flexShrink:0 }}>
-          <div style={{ background:"linear-gradient(135deg,#6366f1,#8b5cf6)",borderRadius:".45rem",padding:".38rem",display:"flex" }}><ZapIcon size={16}/></div>
-          <span className="font-display" style={{ color:"white",fontWeight:800,fontSize:".95rem",letterSpacing:"-.01em",whiteSpace:"nowrap" }}>Media Blast Boosters<span style={{ color:"#6366f1",fontSize:".7rem",fontWeight:700,marginLeft:".2rem" }}>™</span></span>
-        </div>
-        <div style={{ width:1,height:22,background:"#1e2d45",flexShrink:0 }}/>
-        <nav style={{ display:"flex",gap:".1rem",flex:1,overflowX:"auto" }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding:".42rem .78rem",fontWeight:600,fontSize:".78rem",borderRadius:".35rem",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:".38rem",border:"none",cursor:"pointer",background:activeTab===t.id?"rgba(99,102,241,.22)":"transparent",color:activeTab===t.id?"#a5b4fc":"#64748b",transition:"all .15s" }}>
-              {t.icon}{t.label}
-            </button>
-          ))}
-        </nav>
-        <button onClick={() => setShowCompanyData(true)} style={{ display:"flex",alignItems:"center",gap:".45rem",padding:".38rem .85rem",background:"transparent",border:"1px solid #2d4060",borderRadius:".45rem",color:hasCompanyData?"#a5b4fc":"#475569",cursor:"pointer",fontSize:".78rem",fontWeight:600,transition:"all .2s",flexShrink:0,whiteSpace:"nowrap" }}
-          onMouseOver={e=>{ e.currentTarget.style.background="rgba(99,102,241,.15)"; e.currentTarget.style.borderColor="#6366f1"; e.currentTarget.style.color="#a5b4fc"; }}
-          onMouseOut={e=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor="#2d4060"; e.currentTarget.style.color=hasCompanyData?"#a5b4fc":"#475569"; }}>
-          <BuildingIcon size={14}/> Company Data {hasCompanyData&&<span style={{ width:6,height:6,borderRadius:"50%",background:"#34d399",flexShrink:0 }}/>}
-        </button>
-        <button onClick={() => setShowSettings(true)} style={{ color:"#475569",background:"none",border:"none",cursor:"pointer",padding:".3rem",display:"flex",flexShrink:0,transition:"color .15s" }}
-          onMouseOver={e=>e.currentTarget.style.color="#a5b4fc"} onMouseOut={e=>e.currentTarget.style.color="#475569"}>
-          <SettingsIcon size={16}/>
-        </button>
-      </header>
+      {/* ══ LEFT SIDEBAR ══════════════════════════════════════════════════════ */}
+      <aside style={{
+        width: 220, flexShrink: 0, display: "flex", flexDirection: "column",
+        background: "linear-gradient(90deg, rgba(137,41,189,1) 0%, rgba(38,32,105,1) 35%)",
+        minHeight: "100vh", position: "sticky", top: 0, height: "100vh",
+        boxShadow: "4px 0 24px rgba(0,0,0,.25)", zIndex: 30,
+      }}>
 
-      {/* ══ MAIN ══════════════════════════════════════════════════════════════ */}
-      <main style={{ flex:1,overflowY:"auto",padding:"1.5rem",maxWidth:"940px",width:"100%",margin:"0 auto" }}>
-        {!hasCompanyData && dataLoaded && (
-          <div style={{ background:"linear-gradient(135deg,#1e1b4b,#312e81)",border:"1px solid #4338ca",borderRadius:".875rem",padding:"1rem 1.5rem",marginBottom:"1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",flexWrap:"wrap" }}>
-            <div style={{ display:"flex",alignItems:"center",gap:".75rem" }}>
-              <div style={{ background:"rgba(99,102,241,.25)",borderRadius:".5rem",padding:".5rem",display:"flex" }}><BuildingIcon size={20}/></div>
-              <div>
-                <p style={{ color:"white",fontWeight:600,fontSize:".9rem",margin:0 }}>Set up your company profile to get started</p>
-                <p style={{ color:"#a5b4fc",fontSize:".78rem",margin:"2px 0 0" }}>AI uses your company data to personalize every output across the dashboard.</p>
-              </div>
+        {/* Logo */}
+        <div style={{ padding: "1.25rem 1.1rem 1rem", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: ".55rem" }}>
+            <div style={{ background: "rgba(255,255,255,.15)", borderRadius: ".45rem", padding: ".38rem", display: "flex", flexShrink: 0 }}>
+              <ZapIcon size={16}/>
             </div>
-            <button onClick={() => setShowCompanyData(true)} className="btn-primary" style={{ flexShrink:0 }}><BuildingIcon size={15}/> Add Company Data</button>
+            <span className="font-display" style={{ color: "white", fontWeight: 800, fontSize: ".88rem", letterSpacing: "-.01em", lineHeight: 1.2 }}>
+              Media Blast<br/>Boosters<span style={{ color: "rgba(255,255,255,.6)", fontSize: ".6rem", fontWeight: 700, marginLeft: ".15rem" }}>™</span>
+            </span>
           </div>
-        )}
+        </div>
 
-        {activeTab === "topics"     && <TrendingTopics companyData={companyData} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
-        {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
-        {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
-        {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} showToast={showToast}/>}
-        {activeTab === "orders"     && <Orders orders={orders} showThankYou={showThankYou} onNavigateToPR={() => setActiveTab("pr")}/>}
-      </main>
+        {/* Main nav */}
+        <nav style={{ flex: 1, padding: ".75rem .6rem", display: "flex", flexDirection: "column", gap: ".15rem" }}>
+          {TABS.map(t => {
+            const active = activeTab === t.id;
+            return (
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+                display: "flex", alignItems: "center", gap: ".6rem",
+                padding: ".6rem .75rem", borderRadius: ".5rem", border: "none", cursor: "pointer",
+                background: active ? "rgba(255,255,255,.18)" : "transparent",
+                color: active ? "white" : "rgba(255,255,255,.62)",
+                fontWeight: active ? 600 : 500, fontSize: ".82rem", textAlign: "left", width: "100%",
+                transition: "all .15s",
+                boxShadow: active ? "inset 0 0 0 1px rgba(255,255,255,.15)" : "none",
+              }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,.1)"; e.currentTarget.style.color = "white"; }}
+                onMouseOut={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,.62)"; } }}
+              >
+                <span style={{ opacity: active ? 1 : .75 }}>{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Divider */}
+        <div style={{ height: "1px", background: "rgba(255,255,255,.12)", margin: "0 .75rem" }}/>
+
+        {/* Company Data + Settings */}
+        <div style={{ padding: ".75rem .6rem", display: "flex", flexDirection: "column", gap: ".15rem" }}>
+          <button onClick={() => setShowCompanyData(true)} style={{
+            display: "flex", alignItems: "center", gap: ".6rem",
+            padding: ".6rem .75rem", borderRadius: ".5rem", border: "none", cursor: "pointer",
+            background: "transparent", color: "rgba(255,255,255,.62)",
+            fontWeight: 500, fontSize: ".82rem", textAlign: "left", width: "100%", transition: "all .15s",
+          }}
+            onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,.1)"; e.currentTarget.style.color = "white"; }}
+            onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,.62)"; }}
+          >
+            <BuildingIcon size={15}/>
+            Company Data
+            {hasCompanyData && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", flexShrink: 0, marginLeft: "auto" }}/>}
+          </button>
+
+          <button onClick={() => setShowSettings(true)} style={{
+            display: "flex", alignItems: "center", gap: ".6rem",
+            padding: ".6rem .75rem", borderRadius: ".5rem", border: "none", cursor: "pointer",
+            background: "transparent", color: "rgba(255,255,255,.62)",
+            fontWeight: 500, fontSize: ".82rem", textAlign: "left", width: "100%", transition: "all .15s",
+          }}
+            onMouseOver={e => { e.currentTarget.style.background = "rgba(255,255,255,.1)"; e.currentTarget.style.color = "white"; }}
+            onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,.62)"; }}
+          >
+            <SettingsIcon size={15}/>
+            Settings
+          </button>
+        </div>
+
+        {/* Bottom padding */}
+        <div style={{ height: ".5rem" }}/>
+      </aside>
+
+      {/* ══ MAIN CONTENT ══════════════════════════════════════════════════════ */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <main style={{ flex: 1, overflowY: "auto", padding: "1.5rem", maxWidth: "940px", width: "100%", margin: "0 auto" }}>
+          {!hasCompanyData && dataLoaded && (
+            <div style={{ background:"linear-gradient(135deg,#1e1b4b,#312e81)",border:"1px solid #4338ca",borderRadius:".875rem",padding:"1rem 1.5rem",marginBottom:"1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"1rem",flexWrap:"wrap" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:".75rem" }}>
+                <div style={{ background:"rgba(99,102,241,.25)",borderRadius:".5rem",padding:".5rem",display:"flex" }}><BuildingIcon size={20}/></div>
+                <div>
+                  <p style={{ color:"white",fontWeight:600,fontSize:".9rem",margin:0 }}>Set up your company profile to get started</p>
+                  <p style={{ color:"#a5b4fc",fontSize:".78rem",margin:"2px 0 0" }}>AI uses your company data to personalize every output across the dashboard.</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCompanyData(true)} className="btn-primary" style={{ flexShrink:0 }}><BuildingIcon size={15}/> Add Company Data</button>
+            </div>
+          )}
+
+          {activeTab === "topics"     && <TrendingTopics companyData={companyData} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
+          {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
+          {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
+          {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} showToast={showToast}/>}
+          {activeTab === "orders"     && <Orders orders={orders} showThankYou={showThankYou} onNavigateToPR={() => setActiveTab("pr")}/>}
+        </main>
+      </div>
 
       {/* ══ MODALS ════════════════════════════════════════════════════════════ */}
       <CompanyDataModal isOpen={showCompanyData} onClose={() => setShowCompanyData(false)} companyData={companyData} onSave={saveCompanyData} showToast={showToast}/>
