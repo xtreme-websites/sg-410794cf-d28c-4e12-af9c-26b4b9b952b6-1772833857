@@ -184,7 +184,7 @@ export default function PRDashboard() {
 
         {activeTab === "topics"     && <TrendingTopics companyData={companyData} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
         {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
-        {activeTab === "widgets"    && <TrustAssets showToast={showToast}/>}
+        {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
         {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} showToast={showToast}/>}
         {activeTab === "orders"     && <Orders orders={orders} showThankYou={showThankYou} onNavigateToPR={() => setActiveTab("pr")}/>}
       </main>
