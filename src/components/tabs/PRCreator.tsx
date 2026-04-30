@@ -63,6 +63,8 @@ export default function PRCreator({
   const [enhancingQuote,       setEnhancingQuote]       = useState(false);
   const [showFocusDropdown,    setShowFocusDropdown]    = useState(false);
   const [showThemeDropdown,    setShowThemeDropdown]    = useState(false);
+  const [refMode,              setRefMode]              = useState<"topic" | "external">("topic");
+  const [externalRef,          setExternalRef]          = useState("");
 
   const { name: companyName, industry, websiteUrl: siteUrl, quoteAttribution } = companyData;
 
@@ -77,7 +79,8 @@ export default function PRCreator({
     try {
       const { about, quote, keywords: kw, wordCount, mainFocus, theme, videoUrl } = prFormData;
       const kwText   = kw.length > 0 ? kw.join(", ") : "no specific keywords";
-      const topicRef = selectedTopic ? `\nBase this on trending angle: "${selectedTopic.selectedIdea || selectedTopic.title}"` : "";
+      const topicRef = selectedTopic && refMode === "topic" ? `\nBase this on trending angle: "${selectedTopic.selectedIdea || selectedTopic.title}"` : "";
+      const extRef   = externalRef.trim() && refMode === "external" ? `\nUse the following as a style/structure reference — adapt the format and tone but write entirely new content for ${companyName || "this company"}:\n---\n${externalRef.trim()}\n---` : "";
       const coAbout  = companyData.about ? `\nCompany background: ${companyData.about}` : "";
       const contact  = [companyData.email, companyData.phone, companyData.address].filter(Boolean).join(" | ");
       const prompt = customPRPrompt
@@ -88,7 +91,7 @@ export default function PRCreator({
             .replace(/{keywordsText}/g, kwText).replace(/{about}/g, about)
             .replace(/{quote}/g, quote).replace(/{quoteAttribution}/g, quoteAttribution)
         : `Write a professional press release for ${companyName || "our company"} in the ${industry || "business"} industry.
-REQUIREMENTS: ~${wordCount} words, focus: ${mainFocus}, tone: ${theme}, keywords: ${kwText}, website: ${siteUrl || "N/A"}.${topicRef}${coAbout}
+REQUIREMENTS: ~${wordCount} words, focus: ${mainFocus}, tone: ${theme}, keywords: ${kwText}, website: ${siteUrl || "N/A"}.${topicRef}${extRef}${coAbout}
 CONTENT: ${about}
 QUOTE: "${quote}" — ${quoteAttribution || "Company Spokesperson"}${videoUrl ? `\nVIDEO REFERENCE: ${videoUrl}` : ""}
 FORMAT with HTML tags: <h1> headline, <p><strong>FOR IMMEDIATE RELEASE</strong></p>, dateline paragraph, 3-4 body paragraphs, quote with <em>, <h2>About ${companyName || "Company"}</h2> with description, <h2>Contact Information</h2> with ${contact || siteUrl || "contact details"}.
@@ -198,23 +201,52 @@ Make it genuinely newsworthy and professionally written.`;
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-            {/* Topic reference */}
+            {/* Reference section — toggle between Trending Topic and External */}
             <div>
-              <label className="field-label">Trending Topic Reference <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span></label>
-              {selectedTopic ? (
-                <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: ".6rem", padding: ".875rem 1rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <p style={{ fontWeight: 600, color: "#3730a3", fontSize: ".875rem", marginBottom: ".25rem" }}>{selectedTopic.title}</p>
-                      <p style={{ fontSize: ".75rem", color: "#6366f1" }}>Source: {selectedTopic.source}</p>
-                      {selectedTopic.selectedIdea && <p style={{ fontSize: ".75rem", color: "#4338ca", marginTop: ".35rem", background: "#e0e7ff", padding: ".25rem .5rem", borderRadius: ".35rem", display: "inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
-                    </div>
-                    <button onClick={onClearTopic} style={{ fontSize: ".75rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
-                  </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".5rem" }}>
+                <label className="field-label" style={{ margin: 0 }}>PR Reference <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span></label>
+                <div style={{ display: "flex", background: "#f1f5f9", borderRadius: ".4rem", padding: ".2rem", gap: ".15rem" }}>
+                  <button onClick={() => setRefMode("topic")} style={{ padding: ".25rem .65rem", fontSize: ".72rem", fontWeight: 600, border: "none", borderRadius: ".3rem", cursor: "pointer", transition: "all .15s", background: refMode === "topic" ? "white" : "transparent", color: refMode === "topic" ? "#4338ca" : "#64748b", boxShadow: refMode === "topic" ? "0 1px 3px rgba(0,0,0,.1)" : "none" }}>
+                    📰 Trending Topic
+                  </button>
+                  <button onClick={() => setRefMode("external")} style={{ padding: ".25rem .65rem", fontSize: ".72rem", fontWeight: 600, border: "none", borderRadius: ".3rem", cursor: "pointer", transition: "all .15s", background: refMode === "external" ? "white" : "transparent", color: refMode === "external" ? "#4338ca" : "#64748b", boxShadow: refMode === "external" ? "0 1px 3px rgba(0,0,0,.1)" : "none" }}>
+                    📋 External Source
+                  </button>
                 </div>
+              </div>
+
+              {refMode === "topic" ? (
+                selectedTopic ? (
+                  <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: ".6rem", padding: ".875rem 1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <p style={{ fontWeight: 600, color: "#3730a3", fontSize: ".875rem", marginBottom: ".25rem" }}>{selectedTopic.title}</p>
+                        <p style={{ fontSize: ".75rem", color: "#6366f1" }}>Source: {selectedTopic.source}</p>
+                        {selectedTopic.selectedIdea && <p style={{ fontSize: ".75rem", color: "#4338ca", marginTop: ".35rem", background: "#e0e7ff", padding: ".25rem .5rem", borderRadius: ".35rem", display: "inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
+                      </div>
+                      <button onClick={onClearTopic} style={{ fontSize: ".75rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: ".6rem", padding: ".875rem", textAlign: "center" }}>
+                    <p style={{ color: "#94a3b8", fontSize: ".8rem" }}>No topic selected — <button onClick={onNavigateToTopics} style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: 600, fontSize: ".8rem" }}>browse Trending Topics →</button></p>
+                  </div>
+                )
               ) : (
-                <div style={{ background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: ".6rem", padding: ".875rem", textAlign: "center" }}>
-                  <p style={{ color: "#94a3b8", fontSize: ".8rem" }}>No topic selected — <button onClick={onNavigateToTopics} style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: 600, fontSize: ".8rem" }}>browse Trending Topics →</button></p>
+                <div>
+                  <textarea
+                    value={externalRef}
+                    onChange={e => setExternalRef(e.target.value)}
+                    placeholder="Paste a previous press release, news article, or any reference content here. AI will use it as a style and structure guide — adapting the format and tone for your company while writing completely original content."
+                    className="field-input"
+                    style={{ height: "160px", resize: "vertical", lineHeight: 1.6, fontSize: ".82rem" }}
+                  />
+                  {externalRef.trim() && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: ".35rem" }}>
+                      <span style={{ fontSize: ".72rem", color: "#94a3b8" }}>{externalRef.trim().split(/\s+/).length} words pasted</span>
+                      <button onClick={() => setExternalRef("")} style={{ fontSize: ".72rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -356,7 +388,7 @@ Make it genuinely newsworthy and professionally written.`;
               <button onClick={generatePressRelease} disabled={isLoading} className="btn-primary" style={{ flex: 1, justifyContent: "center", padding: ".8rem" }}>
                 {isLoading ? <><LoaderIcon size={16}/> Generating...</> : <><SparklesIcon size={16}/> Generate Press Release</>}
               </button>
-              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null }); onClearTopic(); showToast("Form cleared"); }} className="btn-secondary">Clear</button>
+              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null }); onClearTopic(); setExternalRef(""); showToast("Form cleared"); }} className="btn-secondary">Clear</button>
             </div>
           </div>
         </div>
