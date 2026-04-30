@@ -63,7 +63,7 @@ const EMPTY_CONFIG: Omit<BadgeConfig, "id" | "name"> = {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const Laurel = ({ flip, lc = "#d1d5db" }: { flip?: boolean; lc?: string }) =>
-  flip ? <RightLaurel lc={lc}/> : <LeftLaurel lc={lc}/>;
+  <LeftLaurel lc={lc} style={{ flexShrink: 0, opacity: 0.85, transform: flip ? "scaleX(-1)" : "none" }}/>;
 
 
 function LogoEl({ logo, color, scale = 1 }: { logo: LogoDef; color: string; scale?: number }) {
@@ -177,9 +177,10 @@ function generateEmbedHTML(config: BadgeConfig, logos: LogoDef[], tier: Tier): s
 
   const logoEl = (l: LogoDef) => `<span style="font-family:${l.font};font-size:${l.size};font-weight:${l.weight};color:${lc};letter-spacing:${l.spacing??"normal"};line-height:${l.lh??"1.2"};font-style:${l.fStyle??"normal"};display:inline-block;white-space:nowrap">${l.label.replace("\n","<br>")}</span>`;
   const laurelSVG = (side: "left" | "right") => {
-    const d = side === "left" ? LEFT_LAUREL_D : RIGHT_LAUREL_D;
-    const t = side === "left" ? LEFT_LAUREL_TRANSFORM : RIGHT_LAUREL_TRANSFORM;
-    return `<svg width="48" height="96" viewBox="0 0 191 385" fill="none" style="flex-shrink:0;opacity:0.85"><path d="${d}" fill="${leafC}" transform="${t}"/></svg>`;
+    const transform = side === "right"
+      ? `${LEFT_LAUREL_TRANSFORM} scale(-1,1) translate(-191,0)`
+      : LEFT_LAUREL_TRANSFORM;
+    return `<svg width="48" height="96" viewBox="0 0 191 385" fill="none" style="flex-shrink:0;opacity:0.85"><path d="${LEFT_LAUREL_D}" fill="${leafC}" transform="${transform}"/></svg>`;
   };
   const header = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;height:0.5px;background:${lineC}"></div><span style="font-family:Arial,sans-serif;font-size:10px;letter-spacing:.22em;color:${textC};font-weight:600;white-space:nowrap">AS SEEN ON</span><div style="flex:1;height:0.5px;background:${lineC}"></div></div>`;
   const counter = config.outletCounter ? `<span style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:.18em;color:${textC};font-weight:500">AND OVER ${OUTLET_COUNT[tier]} NEWS SITES</span>` : "";
