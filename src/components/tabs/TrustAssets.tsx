@@ -60,14 +60,23 @@ const EMPTY_CONFIG: Omit<BadgeConfig, "id" | "name"> = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const Laurel = ({ flip, lc = "#d1d5db" }: { flip?: boolean; lc?: string }) => (
-  <svg width="34" height="70" viewBox="0 0 34 70" fill="none" style={{ flexShrink:0, opacity:.75, transform: flip ? "scaleX(-1)" : "none" }}>
-    <path d="M17 66 Q16 43 17 8" stroke={lc} strokeWidth="1.2"/>
-    <ellipse cx="10" cy="60" rx="7" ry="3.2" transform="rotate(-42 10 60)" fill={lc}/>
-    <ellipse cx="8"  cy="50" rx="7" ry="3.2" transform="rotate(-30 8 50)"  fill={lc}/>
-    <ellipse cx="8"  cy="40" rx="7" ry="3.2" transform="rotate(-18 8 40)"  fill={lc}/>
-    <ellipse cx="9"  cy="30" rx="7" ry="3.2" transform="rotate(-8 9 30)"   fill={lc}/>
-    <ellipse cx="11" cy="21" rx="6" ry="2.8" transform="rotate(-2 11 21)"  fill={lc}/>
-    <ellipse cx="14" cy="13" rx="5" ry="2.5" transform="rotate(6 14 13)"   fill={lc}/>
+  <svg width="65" height="104" viewBox="0 0 65 104" fill="none" style={{ flexShrink:0, opacity:.82, transform: flip ? "scaleX(-1)" : "none" }}>
+    <path d="M32 100 Q30 76 32 52 Q34 28 32 8" stroke={lc} strokeWidth="1.3" fill="none"/>
+    {/* 6 pairs of leaves fanning outward from stem, widest in middle */}
+    <ellipse cx="18" cy="92" rx="12" ry="5.5" transform="rotate(-48 18 92)" fill={lc}/>
+    <ellipse cx="46" cy="92" rx="12" ry="5.5" transform="rotate(48 46 92)"  fill={lc}/>
+    <ellipse cx="11" cy="78" rx="13" ry="5.5" transform="rotate(-40 11 78)" fill={lc}/>
+    <ellipse cx="53" cy="78" rx="13" ry="5.5" transform="rotate(40 53 78)"  fill={lc}/>
+    <ellipse cx="7"  cy="63" rx="14" ry="5.5" transform="rotate(-30 7 63)"  fill={lc}/>
+    <ellipse cx="57" cy="63" rx="14" ry="5.5" transform="rotate(30 57 63)"  fill={lc}/>
+    <ellipse cx="9"  cy="48" rx="13" ry="5.2" transform="rotate(-22 9 48)"  fill={lc}/>
+    <ellipse cx="55" cy="48" rx="13" ry="5.2" transform="rotate(22 55 48)"  fill={lc}/>
+    <ellipse cx="14" cy="34" rx="12" ry="5"   transform="rotate(-14 14 34)" fill={lc}/>
+    <ellipse cx="50" cy="34" rx="12" ry="5"   transform="rotate(14 50 34)"  fill={lc}/>
+    <ellipse cx="20" cy="22" rx="10" ry="4.5" transform="rotate(-7 20 22)"  fill={lc}/>
+    <ellipse cx="44" cy="22" rx="10" ry="4.5" transform="rotate(7 44 22)"   fill={lc}/>
+    {/* Top single leaf */}
+    <ellipse cx="32" cy="12" rx="8"  ry="4"                                  fill={lc}/>
   </svg>
 );
 
@@ -145,11 +154,11 @@ function BadgePreview({ config, logos, tier, scale = 1 }: { config: BadgeConfig;
         </div>
       ) : (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          {config.showLaurels && <div style={{ marginRight: `${50*scale}px`, flexShrink: 0 }}><Laurel lc={leafC}/></div>}
+          {config.showLaurels && <div style={{ marginRight: `${30*scale}px`, flexShrink: 0 }}><Laurel lc={leafC}/></div>}
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: `${14*scale}px`, flexWrap: "wrap" }}>
             {logos.map(l => <LogoEl key={l.id} logo={l} color={lc} scale={scale}/>)}
           </div>
-          {config.showLaurels && <div style={{ marginLeft: `${50*scale}px`, flexShrink: 0 }}><Laurel flip lc={leafC}/></div>}
+          {config.showLaurels && <div style={{ marginLeft: `${30*scale}px`, flexShrink: 0 }}><Laurel flip lc={leafC}/></div>}
         </div>
       )}
 
@@ -181,7 +190,7 @@ function generateEmbedHTML(config: BadgeConfig, logos: LogoDef[], tier: Tier): s
   const animId   = `mbb-scroll-${config.id.slice(0,8)}`;
 
   const logoEl = (l: LogoDef) => `<span style="font-family:${l.font};font-size:${l.size};font-weight:${l.weight};color:${lc};letter-spacing:${l.spacing??"normal"};line-height:${l.lh??"1.2"};font-style:${l.fStyle??"normal"};display:inline-block;white-space:nowrap">${l.label.replace("\n","<br>")}</span>`;
-  const laurelSVG = (flip: boolean) => `<svg width="34" height="70" viewBox="0 0 34 70" fill="none" style="flex-shrink:0;opacity:0.75;${flip?"transform:scaleX(-1)":""}"><path d="M17 66 Q16 43 17 8" stroke="${leafC}" stroke-width="1.2"/><ellipse cx="10" cy="60" rx="7" ry="3.2" transform="rotate(-42 10 60)" fill="${leafC}"/><ellipse cx="8" cy="50" rx="7" ry="3.2" transform="rotate(-30 8 50)" fill="${leafC}"/><ellipse cx="8" cy="40" rx="7" ry="3.2" transform="rotate(-18 8 40)" fill="${leafC}"/><ellipse cx="9" cy="30" rx="7" ry="3.2" transform="rotate(-8 9 30)" fill="${leafC}"/><ellipse cx="11" cy="21" rx="6" ry="2.8" transform="rotate(-2 11 21)" fill="${leafC}"/><ellipse cx="14" cy="13" rx="5" ry="2.5" transform="rotate(6 14 13)" fill="${leafC}"/></svg>`;
+  const laurelSVG = (flip: boolean) => `<svg width="65" height="104" viewBox="0 0 65 104" fill="none" style="flex-shrink:0;opacity:0.82;${flip?"transform:scaleX(-1)":""}"><path d="M32 100 Q30 76 32 52 Q34 28 32 8" stroke="${leafC}" stroke-width="1.3" fill="none"/><ellipse cx="18" cy="92" rx="12" ry="5.5" transform="rotate(-48 18 92)" fill="${leafC}"/><ellipse cx="46" cy="92" rx="12" ry="5.5" transform="rotate(48 46 92)" fill="${leafC}"/><ellipse cx="11" cy="78" rx="13" ry="5.5" transform="rotate(-40 11 78)" fill="${leafC}"/><ellipse cx="53" cy="78" rx="13" ry="5.5" transform="rotate(40 53 78)" fill="${leafC}"/><ellipse cx="7" cy="63" rx="14" ry="5.5" transform="rotate(-30 7 63)" fill="${leafC}"/><ellipse cx="57" cy="63" rx="14" ry="5.5" transform="rotate(30 57 63)" fill="${leafC}"/><ellipse cx="9" cy="48" rx="13" ry="5.2" transform="rotate(-22 9 48)" fill="${leafC}"/><ellipse cx="55" cy="48" rx="13" ry="5.2" transform="rotate(22 55 48)" fill="${leafC}"/><ellipse cx="14" cy="34" rx="12" ry="5" transform="rotate(-14 14 34)" fill="${leafC}"/><ellipse cx="50" cy="34" rx="12" ry="5" transform="rotate(14 50 34)" fill="${leafC}"/><ellipse cx="20" cy="22" rx="10" ry="4.5" transform="rotate(-7 20 22)" fill="${leafC}"/><ellipse cx="44" cy="22" rx="10" ry="4.5" transform="rotate(7 44 22)" fill="${leafC}"/><ellipse cx="32" cy="12" rx="8" ry="4" fill="${leafC}"/></svg>`;
   const header = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;height:0.5px;background:${lineC}"></div><span style="font-family:Arial,sans-serif;font-size:10px;letter-spacing:.22em;color:${textC};font-weight:600;white-space:nowrap">AS SEEN ON</span><div style="flex:1;height:0.5px;background:${lineC}"></div></div>`;
   const counter = config.outletCounter ? `<span style="font-family:Arial,sans-serif;font-size:9px;letter-spacing:.18em;color:${textC};font-weight:500">AND OVER ${OUTLET_COUNT[tier]} NEWS SITES</span>` : "";
   const verif   = config.verificationBadge ? `<span style="font-family:Arial,sans-serif;font-size:8px;color:${textC};margin-top:10px;display:flex;align-items:center;gap:4px;font-weight:600"><span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;border:0.8px solid ${textC};font-size:7px;line-height:1;flex-shrink:0">&#10003;</span>Verified by <a href="${VERIFICATION_URL}" target="_blank" rel="noopener noreferrer" style="color:${textC};text-decoration:none;font-weight:600">Media Blast Boosters&#8482;</a></span>` : "";
@@ -193,7 +202,7 @@ function generateEmbedHTML(config: BadgeConfig, logos: LogoDef[], tier: Tier): s
     const loopLogos = Array(6).fill(null).flatMap(() => logos).map(logoEl).join("");
     return `<style>@keyframes ${animId}{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}</style><div style="background:${bg};border-radius:6px;padding:12px 0;overflow:hidden">${header}<div style="overflow:hidden;-webkit-mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent);mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent)"><div style="display:flex;align-items:center;gap:40px;animation:${animId} ${config.sliderSpeed}s linear infinite;width:max-content;padding:4px 0">${loopLogos}</div></div>${footer}</div>`;
   }
-  const logoRow = `<div style="display:flex;justify-content:center;align-items:center">${config.showLaurels ? `<div style="margin-right:50px;flex-shrink:0">${laurelSVG(false)}</div>` : ""}<div style="display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap">${logosHTML}</div>${config.showLaurels ? `<div style="margin-left:50px;flex-shrink:0">${laurelSVG(true)}</div>` : ""}</div>`;
+  const logoRow = `<div style="display:flex;justify-content:center;align-items:center">${config.showLaurels ? `<div style="margin-right:30px;flex-shrink:0">${laurelSVG(false)}</div>` : ""}<div style="display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap">${logosHTML}</div>${config.showLaurels ? `<div style="margin-left:30px;flex-shrink:0">${laurelSVG(true)}</div>` : ""}</div>`;
   return `<div style="background:${bg};border-radius:6px;padding:12px 8px">${header}${logoRow}${footer}</div>`;
 }
 
