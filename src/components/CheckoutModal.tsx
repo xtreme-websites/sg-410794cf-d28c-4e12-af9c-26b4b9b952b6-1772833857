@@ -5,7 +5,7 @@ import { XIcon } from "./icons";
 import { PR_PACKAGES } from "../lib/constants";
 
 // Stripe publishable key — safe to expose client-side
-const STRIPE_PK = "pk_live_51..."; // ← REPLACE with your Stripe publishable key
+const STRIPE_PK = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
 
 let stripePromise: ReturnType<typeof loadStripe> | null = null;
 const getStripe = () => {
