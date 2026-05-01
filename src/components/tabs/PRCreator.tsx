@@ -86,14 +86,27 @@ export default function PRCreator({
       const coAbout  = companyData.about ? `\nCompany background: ${companyData.about}` : "";
       const contact  = [companyData.email, companyData.phone, companyData.address].filter(Boolean).join(" | ");
 
-      // Build owner quote block (paragraph 3)
+      // Build owner quote block (paragraph 3) — h2 attribution for consistency
       const ownerName = quoteAttribution || "Company Spokesperson";
-      const ownerQuoteBlock = `<p><strong>${ownerName}, shared:</strong></p>\n<p><em>"${quote}"</em></p>`;
+      const ownerQuoteBlock = `<h2>${ownerName}, shared:</h2>\n<p><em>"${quote}"</em></p>`;
 
       // Build partner quote block (paragraph 5) if included
       const hasPartner = includePartnerQuote === "yes" && partnerQuote.trim();
       const partnerQuoteBlock = hasPartner
-        ? `<p><strong>${partnerAttribution || "Partner"}, added:</strong></p>\n<p><em>"${partnerQuote}"</em></p>`
+        ? `<h2>${partnerAttribution || "Partner"}, added:</h2>\n<p><em>"${partnerQuote}"</em></p>`
+        : "";
+
+      // Contact info — each piece on its own line
+      const contactParts = [companyData.email, companyData.phone, companyData.address, siteUrl].filter(Boolean);
+      const contactHTML = contactParts.length
+        ? contactParts.map(c => `<p>${c}</p>`).join("\n")
+        : `<p>${siteUrl || "contact details"}</p>`;
+
+      // Keyword hyperlinking instruction
+      const kwLinkInstruction = kw.length === 1
+        ? `Hyperlink the keyword "${kw[0]}" exactly TWICE in the body paragraphs using <a href="${siteUrl || "#"}" target="_blank">${kw[0]}</a>. Do not hyperlink it more than twice.`
+        : kw.length >= 2
+        ? `Hyperlink "${kw[0]}" exactly ONCE and "${kw[1]}" exactly ONCE in the body paragraphs using <a href="${siteUrl || "#"}" target="_blank">keyword</a> tags. Do not hyperlink any keyword more than once.`
         : "";
 
       const prompt = customPRPrompt
@@ -108,22 +121,32 @@ REQUIREMENTS: ~${wordCount} words, focus: ${mainFocus}, tone: ${theme}, keywords
 CONTENT: ${about}
 ${videoUrl ? `VIDEO REFERENCE: ${videoUrl}` : ""}
 
-MANDATORY STRUCTURE — use exactly this HTML structure, preserving the paragraph order:
-<h1>[Compelling headline]</h1>
+HEADLINE RULE: The <h1> title must be 10 words or fewer. Be punchy and newsworthy.
+
+KEYWORD LINKS: ${kwLinkInstruction || "No keywords specified."}
+
+HYPERLINKS: Any mention of the company website (${siteUrl || "N/A"}) must be a clickable <a href="${siteUrl || "#"}" target="_blank"> link.
+
+MANDATORY STRUCTURE — output exactly this HTML, preserving paragraph order:
+<h1>[Compelling headline — MAX 10 WORDS]</h1>
 <p><strong>FOR IMMEDIATE RELEASE</strong></p>
 <p>[City, State] — [Dateline intro paragraph about the news]</p>
-<p>[2nd body paragraph expanding on the news]</p>
+<p>[2nd body paragraph expanding on the news — include keyword hyperlinks here]</p>
 ${ownerQuoteBlock}
 <p>[4th paragraph: supporting detail, context, or additional company info]</p>
 ${hasPartner ? partnerQuoteBlock : "<p>[5th paragraph: call to action or closing detail]</p>"}
 ${hasPartner ? "<p>[6th paragraph: call to action or closing detail]</p>" : ""}
 <h2>About ${companyName || "Company"}</h2>
-<p>[Company boilerplate description]</p>
+<p>[Company boilerplate description. Include <a href="${siteUrl || "#"}" target="_blank">${siteUrl || "website"}</a> as a link.]</p>
 <h2>Contact Information</h2>
-<p>${contact || siteUrl || "contact details"}</p>
+${contactHTML}
 
-Do NOT move or reorder the quote blocks. Keep the owner's quote as paragraph 3 and${hasPartner ? " the partner's quote as paragraph 5." : " maintain the structure above."}
-Make it genuinely newsworthy and professionally written.`;
+RULES:
+- Title MUST be 10 words or fewer — no exceptions.
+- Keep the owner's quote as paragraph 3${hasPartner ? " and partner's quote as paragraph 5" : ""}.
+- All h2 headings (About, Contact, and quote attributions) use <h2> tags.
+- Each contact detail (email, phone, address, website) on its own <p> line.
+- Make it genuinely newsworthy and professionally written.`;
 
       const text = await callClaude(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
       setGeneratedPR(text);
