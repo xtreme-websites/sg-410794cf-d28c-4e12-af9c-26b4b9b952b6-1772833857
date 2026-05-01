@@ -96,11 +96,12 @@ export default function PRCreator({
         ? `<h2>${partnerAttribution || "Partner"}, added:</h2>\n<p><em>"${partnerQuote}"</em></p>`
         : "";
 
-      // Contact info — each piece on its own line, no labels
-      const contactParts = [companyData.email, companyData.phone, companyData.address, siteUrl ? `<a href="${siteUrl}" target="_blank">${siteUrl}</a>` : ""].filter(Boolean);
-      const contactHTML = contactParts.length
-        ? contactParts.map(c => `<p>${c}</p>`).join("\n")
-        : `<p>${siteUrl || "contact details"}</p>`;
+      // Contact info — company name + labeled fields, tight spacing (margin:0 overrides prose)
+      const cEmail   = companyData.email   ? `<p style="margin:0">Email: ${companyData.email}</p>` : "";
+      const cPhone   = companyData.phone   ? `<p style="margin:0">Phone: ${companyData.phone}</p>` : "";
+      const cAddress = companyData.address ? `<p style="margin:0">Address: ${companyData.address}</p>` : "";
+      const cWebsite = siteUrl ? `<p style="margin:0">Website: <a href="${siteUrl}" target="_blank">${siteUrl}</a></p>` : "";
+      const contactHTML = `<p style="margin:0"><strong>${companyName || "Company"}</strong></p>${cEmail}${cPhone}${cAddress}${cWebsite}`;
 
       // Keyword hyperlinking instruction
       const kwLinkInstruction = kw.length === 1
@@ -146,7 +147,7 @@ RULES:
 - Keep the owner's quote as paragraph 3${hasPartner ? " and partner's quote as paragraph 5" : ""}.
 - All h2 headings (About, Contact, and quote attributions) use <h2> tags.
 - Contact details: output each one as its own <p> tag — NO labels like "Email:", "Phone:", "Address:", "Website:". Just the raw value.
-- Do NOT add "Learn more at..." or any website link inside the About section body text. The website is already in the Contact section.
+- Do NOT add "Learn more at...", "Visit our website", "Visit ${siteUrl}", or ANY website URL or link inside the About section paragraph. The website appears only in Contact Information.
 - Make it genuinely newsworthy and professionally written.`;
 
       const text = await callClaude(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
@@ -178,7 +179,9 @@ RULES:
   };
 
   const handlePlaceOrder = (packageType: string) => {
-    const prTitle = prFormData.about.slice(0, 80) || "Press Release";
+    // Extract the actual H1 headline from the generated PR
+    const h1Match = generatedPR.match(/<h1[^>]*>(.*?)<\/h1>/i);
+    const prTitle = h1Match ? h1Match[1].replace(/<[^>]*>/g, "") : prFormData.about.slice(0, 80) || "Press Release";
     onOpenCheckout(packageType, prTitle, generatedPR);
   };
 
