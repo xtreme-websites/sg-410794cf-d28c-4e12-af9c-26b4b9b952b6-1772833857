@@ -67,7 +67,7 @@ export default function CheckoutModal({
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.55)", backdropFilter:"blur(4px)", animation:"fadeIn .2s ease" }}>
-      <div style={{ background:"white", borderRadius:"1rem", width:"100%", maxWidth:680, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.25)", animation:"slideUp .25s ease", position:"relative" }}>
+      <div style={{ background:"white", borderRadius:"1rem", width:"100%", maxWidth:550, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.25)", animation:"slideUp .25s ease", position:"relative" }}>
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"1rem 1.25rem .85rem", borderBottom:"1px solid #f1f5f9", position:"sticky", top:0, background:"white", zIndex:1 }}>
