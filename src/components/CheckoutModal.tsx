@@ -67,7 +67,7 @@ export default function CheckoutModal({
 
   return (
     <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.55)", backdropFilter:"blur(4px)", animation:"fadeIn .2s ease" }}>
-      <div style={{ background:"white", borderRadius:"1rem", width:"100%", maxWidth:560, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.25)", animation:"slideUp .25s ease", position:"relative" }}>
+      <div style={{ background:"white", borderRadius:"1rem", width:"100%", maxWidth:680, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.25)", animation:"slideUp .25s ease", position:"relative" }}>
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"1rem 1.25rem .85rem", borderBottom:"1px solid #f1f5f9", position:"sticky", top:0, background:"white", zIndex:1 }}>
@@ -93,7 +93,7 @@ export default function CheckoutModal({
         </div>
 
         {/* Stripe Embedded Checkout */}
-        <div style={{ padding:".5rem .5rem .75rem" }}>
+        <div style={{ padding:"0" }}>
           {loading && (
             <div style={{ display:"flex", justifyContent:"center", alignItems:"center", padding:"3rem", color:"#64748b", gap:".75rem" }}>
               <div style={{ width:20, height:20, border:"2px solid #e2e8f0", borderTopColor:"#6366f1", borderRadius:"50%", animation:"spin .8s linear infinite" }}/>
