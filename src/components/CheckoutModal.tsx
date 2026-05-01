@@ -93,7 +93,7 @@ export default function CheckoutModal({
         </div>
 
         {/* Stripe Embedded Checkout */}
-        <div style={{ padding:"1rem 1.25rem 1.25rem" }}>
+        <div style={{ padding:".5rem .5rem .75rem" }}>
           {loading && (
             <div style={{ display:"flex", justifyContent:"center", alignItems:"center", padding:"3rem", color:"#64748b", gap:".75rem" }}>
               <div style={{ width:20, height:20, border:"2px solid #e2e8f0", borderTopColor:"#6366f1", borderRadius:"50%", animation:"spin .8s linear infinite" }}/>
