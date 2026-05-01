@@ -3,12 +3,16 @@ import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { XIcon, CartIcon, SparklesIcon, CheckIcon } from "../icons";
 
-const STRIPE_PK     = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
+const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
+const STRIPE_PK_TEST = "pk_test_FiKXMJBxEKrQqyMqdAILoROR";
 const PROXY         = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/supabase-proxy";
 const CHECKOUT_URL  = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/create-checkout-credits";
 
-let stripePromise: ReturnType<typeof loadStripe> | null = null;
-const getStripe = () => { if (!stripePromise) stripePromise = loadStripe(STRIPE_PK); return stripePromise; };
+let stripePromises: Record<string, ReturnType<typeof loadStripe>> = {};
+const getStripe = (pk: string) => {
+  if (!stripePromises[pk]) stripePromises[pk] = loadStripe(pk);
+  return stripePromises[pk];
+};
 
 const TIERS = {
   starter:  { label: "Starter",  color: "#6366f1", light: "#eef2ff", price: 397,  outlets: 200,  words: 350,  readers: "2.2M",   authority: 69  },
@@ -36,6 +40,8 @@ export default function CreditWallet({ locationId, showToast }: Props) {
   const [clientSecret,  setClientSecret]  = useState<string|null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError,   setCheckoutError]   = useState("");
+  const [testMode,        setTestMode]        = useState(false);
+  const stripePk = testMode ? STRIPE_PK_TEST : STRIPE_PK_LIVE;
 
   const loadCredits = async () => {
     setLoading(true);
@@ -67,7 +73,7 @@ export default function CreditWallet({ locationId, showToast }: Props) {
       });
       const data = await res.json();
       if (data.error) { setCheckoutError("Unable to load checkout. Please try again."); }
-      else { setClientSecret(data.clientSecret); }
+      else { setClientSecret(data.clientSecret); setTestMode(!!data.testMode); }
     } catch { setCheckoutError("Could not connect to checkout."); }
     setCheckoutLoading(false);
   };
@@ -183,7 +189,12 @@ export default function CreditWallet({ locationId, showToast }: Props) {
               </div>
             ) : (
               <div style={{ padding:"0" }}>
-                <EmbeddedCheckoutProvider stripe={getStripe()} options={{
+                {testMode && (
+                <div style={{ background:"#fef3c7", border:"1px solid #f59e0b", borderRadius:".4rem", padding:".4rem .75rem", fontSize:".72rem", fontWeight:700, color:"#92400e", marginBottom:".75rem", display:"flex", alignItems:"center", gap:".4rem" }}>
+                  🧪 TEST MODE — use card 4242 4242 4242 4242
+                </div>
+              )}
+              <EmbeddedCheckoutProvider stripe={getStripe(stripePk)} options={{
                   fetchClientSecret: () => Promise.resolve(clientSecret),
                   onComplete: () => {
                     showToast(`${selectedQty} ${tier.label} credits purchased! 🎉`);
