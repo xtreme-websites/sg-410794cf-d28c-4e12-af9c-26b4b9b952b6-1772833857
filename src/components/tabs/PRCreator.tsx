@@ -421,9 +421,9 @@ Make it genuinely newsworthy and professionally written.`;
             <div>
               <label className="field-label">Article Length</label>
               <select value={prFormData.wordCount} onChange={e => setPrFormData(p => ({ ...p, wordCount: e.target.value }))} className="field-input">
-                <option value="350">Brief Insight — 350 Words</option>
-                <option value="500">Standard Article — 500 Words</option>
-                <option value="1000">In-Depth Exploration — 1000 Words</option>
+                <option value="350">Starter Package: Brief — 350 Words</option>
+                <option value="500">Standard Package: Standard — 500 Words</option>
+                <option value="1000">Premium Package: In-Depth — 1000 Words</option>
               </select>
             </div>
 
