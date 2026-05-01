@@ -4,8 +4,10 @@ const VALIDATE_URL    = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/v
 const SESSION_KEY     = "mbb_session";
 const ALLOWED_ORIGINS = ["https://app.xtremeautomator.com", "https://media-blast-boosters.vercel.app"];
 
-// Dev mode: set to true to bypass iframe + token check locally
-const DEV_MODE = import.meta.env.DEV;
+// Dev mode: bypass iframe + token check
+// Works locally (vite dev) OR when ?dev_access=mbb2026 is in the URL
+const DEV_MODE = import.meta.env.DEV ||
+  new URLSearchParams(window.location.search).get("dev_access") === "mbb2026";
 
 interface Session { location_id: string; validated_at: number; }
 
