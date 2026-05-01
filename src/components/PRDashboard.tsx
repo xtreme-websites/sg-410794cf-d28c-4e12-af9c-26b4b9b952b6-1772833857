@@ -10,7 +10,8 @@ import TrendingTopics from "./tabs/TrendingTopics";
 import CompetitorAnalysis from "./tabs/CompetitorAnalysis";
 import TrustAssets from "./tabs/TrustAssets";
 import PRCreator from "./tabs/PRCreator";
-import Orders from "./tabs/Orders";
+import AuthGuard from "./AuthGuard";
+import CreditWallet from "./tabs/CreditWallet";
 
 // ─── Global Styles ─────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -141,6 +142,7 @@ export default function PRDashboard() {
   const hasCompanyData = !!(companyData.name || companyData.industry);
 
   return (
+    <AuthGuard locationId={locationId}>
     <div className="mbb-root" style={{ display:"flex", minHeight:"100vh", background:"#f1f5f9" }}>
       <GlobalStyles/>
 
@@ -243,7 +245,7 @@ export default function PRDashboard() {
           {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
           {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
           {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} onOpenCheckout={(type,title,content) => setCheckoutPackage({type,title,content})} showToast={showToast}/>}
-          {activeTab === "orders"     && <Orders orders={orders} showThankYou={showThankYou} onNavigateToPR={() => setActiveTab("pr")}/>}
+          {activeTab === "orders"     && <CreditWallet locationId={locationId} showToast={showToast}/>}
         </main>
       </div>
 
@@ -270,5 +272,6 @@ export default function PRDashboard() {
         </div>
       )}
     </div>
+    </AuthGuard>
   );
 }
