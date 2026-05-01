@@ -55,8 +55,8 @@ const TABS = [
   { id: "topics",     icon: <NewsIcon size={15}/>,   label: "Trending Topics"     },
   { id: "competitor", icon: <BarIcon size={15}/>,    label: "Competitor Analysis" },
   { id: "widgets",    icon: <ShieldIcon size={15}/>, label: "Trust Assets"        },
-  { id: "pr",         icon: <BriefIcon size={15}/>,  label: "PR Creator"          },
-  { id: "orders",     icon: <CartIcon size={15}/>,   label: "PR Orders"           },
+  { id: "pr",         icon: <BriefIcon size={15}/>,  label: "Media Content"       },
+  { id: "orders",     icon: <CartIcon size={15}/>,   label: "Media Credits"       },
 ];
 
 export default function PRDashboard() {

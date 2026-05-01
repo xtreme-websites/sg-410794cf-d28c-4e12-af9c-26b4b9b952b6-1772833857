@@ -1,211 +1,229 @@
 import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import { XIcon, CartIcon, SparklesIcon, CheckIcon } from "../icons";
+import { XIcon } from "../icons";
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
 const STRIPE_PK_TEST = "pk_test_FiKXMJBxEKrQqyMqdAILoROR";
-const PROXY         = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/supabase-proxy";
-const CHECKOUT_URL  = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/create-checkout-credits";
+const PROXY          = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/supabase-proxy";
+const CHECKOUT_URL   = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/create-checkout-credits";
 
-let stripePromises: Record<string, ReturnType<typeof loadStripe>> = {};
-const getStripe = (pk: string) => {
-  if (!stripePromises[pk]) stripePromises[pk] = loadStripe(pk);
-  return stripePromises[pk];
-};
+const stripePromises: Record<string, ReturnType<typeof loadStripe>> = {};
+const getStripe = (pk: string) => { if (!stripePromises[pk]) stripePromises[pk] = loadStripe(pk); return stripePromises[pk]; };
 
 const TIERS = {
-  starter:  { label: "Starter",  color: "#6366f1", light: "#eef2ff", price: 397,  outlets: 200,  words: 350,  readers: "2.2M",   authority: 69  },
-  standard: { label: "Standard", color: "#8929bd", light: "#f5f3ff", price: 697,  outlets: 300,  words: 500,  readers: "26.4M",  authority: 88  },
-  premium:  { label: "Premium",  color: "#d97706", light: "#fffbeb", price: 897,  outlets: 450,  words: 1000, readers: "224.5M", authority: 94  },
+  starter:  { label:"Starter",  color:"#6366f1", light:"#eef2ff", price:397, outlets:"200+", words:350,  readers:"2.2M",   authority:69 },
+  standard: { label:"Standard", color:"#8929bd", light:"#f5f3ff", price:697, outlets:"300+", words:500,  readers:"26.4M",  authority:88 },
+  premium:  { label:"Premium",  color:"#d97706", light:"#fffbeb", price:897, outlets:"450+", words:1000, readers:"224.5M", authority:94 },
 } as const;
 type Tier = keyof typeof TIERS;
 
 const PACKS = [
-  { qty: 3,  label: "3-Pack",  badge: null },
-  { qty: 6,  label: "6-Pack",  badge: "Most Popular" },
-  { qty: 12, label: "12-Pack", badge: "Best Value" },
+  { qty:3,  label:"3-Pack",  badge:null,           bonus:false },
+  { qty:6,  label:"6-Pack",  badge:"Most Popular", bonus:true  },
+  { qty:12, label:"12-Pack", badge:"Best Value",   bonus:true  },
 ];
 
-interface Props { locationId: string; showToast: (msg: string, type?: "success"|"error") => void; }
-
-interface Credits { starter_credits: number; standard_credits: number; premium_credits: number; }
+interface Credits { starter_credits:number; standard_credits:number; premium_credits:number; }
+interface Props { locationId:string; showToast:(msg:string, type?:"success"|"error")=>void; }
 
 export default function CreditWallet({ locationId, showToast }: Props) {
-  const [credits,       setCredits]       = useState<Credits>({ starter_credits:0, standard_credits:0, premium_credits:0 });
-  const [loading,       setLoading]       = useState(true);
-  const [showPurchase,  setShowPurchase]  = useState(false);
-  const [selectedTier,  setSelectedTier]  = useState<Tier>("standard");
-  const [selectedQty,   setSelectedQty]   = useState(6);
-  const [clientSecret,  setClientSecret]  = useState<string|null>(null);
+  const [activeTab,       setActiveTab]       = useState<"packages"|"credits"|"transactions">("credits");
+  const [credits,         setCredits]         = useState<Credits>({ starter_credits:0, standard_credits:0, premium_credits:0 });
+  const [loading,         setLoading]         = useState(true);
+  const [checkout,        setCheckout]        = useState<{ tier:Tier; qty:number }|null>(null);
+  const [clientSecret,    setClientSecret]    = useState<string|null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError,   setCheckoutError]   = useState("");
   const [testMode,        setTestMode]        = useState(false);
-  const stripePk = testMode ? STRIPE_PK_TEST : STRIPE_PK_LIVE;
 
   const loadCredits = async () => {
     setLoading(true);
     try {
-      const res  = await fetch(PROXY, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table:"profiles", operation:"select", eq:{ location_id: locationId } }),
-      });
+      const res  = await fetch(PROXY, { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ table:"profiles", operation:"select", eq:{ location_id:locationId } }) });
       const data = await res.json();
       if (data.data) setCredits(data.data);
-      else setCredits({ starter_credits:0, standard_credits:0, premium_credits:0 });
-    } catch { /* use defaults */ }
+    } catch {}
     setLoading(false);
   };
 
   useEffect(() => { loadCredits(); }, [locationId]);
 
-  const openPurchase = (tier: Tier) => { setSelectedTier(tier); setSelectedQty(6); setShowPurchase(true); setClientSecret(null); setCheckoutError(""); };
-
-  const startCheckout = async () => {
-    setCheckoutLoading(true); setCheckoutError("");
+  const openCheckout = async (tier: Tier, qty: number) => {
+    setCheckout({ tier, qty }); setClientSecret(null); setCheckoutError(""); setCheckoutLoading(true);
     try {
       const returnUrl = `${window.location.origin}${window.location.pathname}${window.location.search}&checkout=complete`;
-      const res  = await fetch(CHECKOUT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: selectedTier, quantity: selectedQty, locationId, returnUrl }),
-      });
+      const res  = await fetch(CHECKOUT_URL, { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ tier, quantity:qty, locationId, returnUrl }) });
       const data = await res.json();
-      if (data.error) { setCheckoutError("Unable to load checkout. Please try again."); }
+      if (data.error) setCheckoutError("Unable to load checkout. Please try again.");
       else { setClientSecret(data.clientSecret); setTestMode(!!data.testMode); }
     } catch { setCheckoutError("Could not connect to checkout."); }
     setCheckoutLoading(false);
   };
 
-  const tier = TIERS[selectedTier];
-  const pack = PACKS.find(p => p.qty === selectedQty)!;
-  const totalPrice = (tier.price * selectedQty).toLocaleString();
+  const handlePurchaseComplete = async (tier: Tier, qty: number) => {
+    // Immediately apply credits (webhook is async backup)
+    try {
+      await fetch(PROXY, { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ table:"profiles", operation:"increment_credits", location_id:locationId, tier, amount:qty, reason:"Stripe Purchase" }) });
+    } catch {}
+    await loadCredits();
+    showToast(`${qty} ${TIERS[tier].label} credits added! 🎉`);
+    setCheckout(null); setClientSecret(null);
+    setActiveTab("credits");
+  };
+
+  const t = checkout ? TIERS[checkout.tier] : null;
+  const stripePk = testMode ? STRIPE_PK_TEST : STRIPE_PK_LIVE;
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom:"1.5rem" }}>
-        <h2 style={{ fontWeight:800, fontSize:"1.3rem", color:"#1e293b", margin:0 }}>Credit Wallet</h2>
-        <p style={{ color:"#64748b", fontSize:".85rem", margin:".25rem 0 0" }}>Purchase PR credits and launch press releases directly from your balance</p>
+      {/* Inner tabs */}
+      <div style={{ display:"flex", gap:".25rem", background:"white", borderRadius:".75rem", padding:".35rem", marginBottom:"1.5rem", boxShadow:"0 1px 3px rgba(0,0,0,.06)", border:"1px solid #f1f5f9", width:"fit-content" }}>
+        {([["packages","Media Packages"],["credits","Media Credits"],["transactions","Transactions"]] as const).map(([id,label]) => (
+          <button key={id} onClick={() => setActiveTab(id)} style={{ padding:".5rem 1.1rem", borderRadius:".5rem", border:"none", cursor:"pointer", fontWeight:600, fontSize:".82rem", transition:"all .15s",
+            background: activeTab===id ? "linear-gradient(135deg,#8929bd,#4338ca)" : "transparent",
+            color: activeTab===id ? "white" : "#64748b",
+            boxShadow: activeTab===id ? "0 2px 8px rgba(137,41,189,.3)" : "none" }}>
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Credit Balance Cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"1rem", marginBottom:"2rem" }}>
-        {(Object.entries(TIERS) as [Tier, typeof TIERS[Tier]][]).map(([key, t]) => {
-          const balance = credits[`${key}_credits`] ?? 0;
-          return (
-            <div key={key} className="card" style={{ padding:"1.5rem", borderTop:`4px solid ${t.color}`, position:"relative", overflow:"hidden" }}>
-              <div style={{ position:"absolute", top:0, right:0, width:80, height:80, background:t.light, borderRadius:"0 0 0 100%", opacity:.6 }}/>
-              <div style={{ fontSize:".7rem", fontWeight:700, letterSpacing:".1em", textTransform:"uppercase", color:t.color, marginBottom:".5rem" }}>{t.label} Package</div>
-              <div style={{ fontSize:"3rem", fontWeight:900, color:"#1e293b", lineHeight:1, marginBottom:".25rem" }}>
-                {loading ? <span style={{ fontSize:"1.5rem", color:"#94a3b8" }}>…</span> : balance}
+      {/* PACKAGES */}
+      {activeTab==="packages" && (
+        <div>
+          <div style={{ marginBottom:"1.25rem" }}>
+            <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#1e293b", margin:0 }}>Media Packages</h2>
+            <p style={{ color:"#64748b", fontSize:".83rem", margin:".25rem 0 0" }}>Purchase PR credit packs — use anytime to launch press releases</p>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:"1.5rem" }}>
+            {(Object.entries(TIERS) as [Tier, typeof TIERS[Tier]][]).map(([key, ti]) => (
+              <div key={key} className="card" style={{ padding:"1.5rem", borderLeft:`5px solid ${ti.color}` }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem", flexWrap:"wrap", gap:".5rem" }}>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:"1.05rem", color:"#1e293b" }}>{ti.label} PR Package</div>
+                    <div style={{ fontSize:".77rem", color:"#64748b", marginTop:".2rem" }}>{ti.outlets} outlets · {ti.words} words · {ti.readers} readers · DA {ti.authority}</div>
+                  </div>
+                  <div style={{ fontSize:"1.1rem", fontWeight:800, color:ti.color }}>${ti.price}<span style={{ fontSize:".7rem", color:"#94a3b8", fontWeight:500 }}>/credit</span></div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:".75rem" }}>
+                  {PACKS.map(p => (
+                    <div key={p.qty} style={{ border:`1.5px solid ${p.badge ? ti.color : "#e2e8f0"}`, borderRadius:".75rem", padding:"1rem", position:"relative", background: p.badge ? ti.light : "white" }}>
+                      {p.badge && <div style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", background:ti.color, color:"white", fontSize:".62rem", fontWeight:700, padding:".15rem .55rem", borderRadius:"99px", whiteSpace:"nowrap" }}>{p.badge}</div>}
+                      <div style={{ textAlign:"center", marginBottom:".6rem" }}>
+                        <div style={{ fontSize:"1.8rem", fontWeight:900, color:"#1e293b" }}>{p.qty}</div>
+                        <div style={{ fontSize:".7rem", color:"#64748b" }}>PR Credits</div>
+                        {p.bonus && <div style={{ fontSize:".65rem", color:"#10b981", fontWeight:700, marginTop:".1rem" }}>+1 bonus w/ promo*</div>}
+                      </div>
+                      <div style={{ textAlign:"center", marginBottom:".75rem" }}>
+                        <div style={{ fontSize:"1.05rem", fontWeight:800, color:ti.color }}>${(ti.price * p.qty).toLocaleString()}</div>
+                        <div style={{ fontSize:".67rem", color:"#94a3b8" }}>${ti.price}/ea</div>
+                      </div>
+                      <button onClick={() => openCheckout(key, p.qty)} style={{ width:"100%", padding:".5rem", borderRadius:".45rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".78rem", background:ti.color, color:"white" }}
+                        onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                        Buy Now
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ fontSize:".78rem", color:"#64748b", marginBottom:"1rem" }}>
-                {balance === 1 ? "credit available" : "credits available"}
-              </div>
-              <div style={{ fontSize:".72rem", color:"#94a3b8", marginBottom:"1rem" }}>
-                {t.outlets}+ outlets · {t.words} words · DA {t.authority}
-              </div>
-              <button
-                onClick={() => openPurchase(key)}
-                style={{ width:"100%", padding:".6rem", borderRadius:".5rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".82rem", background: balance > 0 ? t.color : "#f1f5f9", color: balance > 0 ? "white" : "#64748b", transition:"all .15s" }}
-                onMouseOver={e => { e.currentTarget.style.opacity=".85"; }}
-                onMouseOut={e => { e.currentTarget.style.opacity="1"; }}
-              >
-                {balance > 0 ? "➕ Add More Credits" : "🚀 Get Started"}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+            ))}
+          </div>
+          <p style={{ fontSize:".68rem", color:"#94a3b8", marginTop:".75rem" }}>*+1 bonus credit when a promo code is applied on 6 or 12-pack purchases.</p>
+        </div>
+      )}
 
-      {/* Credit Log */}
-      <CreditLog locationId={locationId}/>
+      {/* CREDITS */}
+      {activeTab==="credits" && (
+        <div>
+          <div style={{ marginBottom:"1.25rem" }}>
+            <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#1e293b", margin:0 }}>Media Credits</h2>
+            <p style={{ color:"#64748b", fontSize:".83rem", margin:".25rem 0 0" }}>Your available PR launch credits by package tier</p>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
+            {(Object.entries(TIERS) as [Tier, typeof TIERS[Tier]][]).map(([key, ti]) => {
+              const bal = credits[`${key}_credits`] ?? 0;
+              return (
+                <div key={key} className="card" style={{ padding:"1.5rem", borderTop:`4px solid ${ti.color}`, position:"relative", overflow:"hidden" }}>
+                  <div style={{ position:"absolute", top:0, right:0, width:72, height:72, background:ti.light, borderRadius:"0 0 0 100%", opacity:.7 }}/>
+                  <div style={{ fontSize:".68rem", fontWeight:700, letterSpacing:".1em", textTransform:"uppercase", color:ti.color, marginBottom:".4rem" }}>{ti.label}</div>
+                  <div style={{ fontSize:"3rem", fontWeight:900, color:"#1e293b", lineHeight:1, marginBottom:".2rem" }}>
+                    {loading ? <span style={{ fontSize:"1.5rem", color:"#94a3b8" }}>…</span> : bal}
+                  </div>
+                  <div style={{ fontSize:".75rem", color:"#94a3b8", marginBottom:"1rem" }}>credits available</div>
+                  <div style={{ fontSize:".7rem", color:"#64748b", marginBottom:"1rem" }}>{ti.outlets} outlets · {ti.words}w · DA {ti.authority}</div>
+                  <button onClick={() => setActiveTab("packages")} style={{ width:"100%", padding:".55rem", borderRadius:".45rem", border:`1.5px solid ${ti.color}`, cursor:"pointer", fontWeight:700, fontSize:".78rem", background:"transparent", color:ti.color, transition:"all .15s" }}
+                    onMouseOver={e=>{ e.currentTarget.style.background=ti.color; e.currentTarget.style.color="white"; }}
+                    onMouseOut={e=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.color=ti.color; }}>
+                    {bal > 0 ? "➕ Add More" : "🚀 Get Started"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      {/* Purchase Modal */}
-      {showPurchase && (
+      {/* TRANSACTIONS */}
+      {activeTab==="transactions" && <TransactionLog locationId={locationId}/>}
+
+      {/* CHECKOUT MODAL */}
+      {checkout && (
         <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.55)", backdropFilter:"blur(4px)" }}>
-          <div style={{ background:"white", borderRadius:"1rem", width:"100%", maxWidth:550, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.25)", position:"relative" }}>
-
-            {/* Header */}
+          <div style={{ background:"white", borderRadius:"1rem", width:"100%", maxWidth:550, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.25)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"1rem 1.25rem .85rem", borderBottom:"1px solid #f1f5f9", position:"sticky", top:0, background:"white", zIndex:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
                 <img src="/logo.png" alt="MBB" style={{ width:28, height:28, objectFit:"contain" }}/>
                 <div>
-                  <div style={{ fontWeight:700, fontSize:".9rem", color:"#1e293b" }}>Purchase PR Credits</div>
+                  <div style={{ fontWeight:700, fontSize:".9rem", color:"#1e293b" }}>Media Blast Boosters™</div>
                   <div style={{ fontSize:".7rem", color:"#64748b" }}>Secure Checkout · 256-bit SSL</div>
                 </div>
               </div>
-              <button onClick={() => { setShowPurchase(false); setClientSecret(null); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8", padding:".25rem", display:"flex" }}>
-                <XIcon size={18}/>
-              </button>
+              <button onClick={() => { setCheckout(null); setClientSecret(null); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8", padding:".25rem", display:"flex" }}><XIcon size={18}/></button>
             </div>
-
-            {!clientSecret ? (
-              <div style={{ padding:"1.25rem" }}>
-                {/* Tier selector */}
-                <div style={{ marginBottom:"1rem" }}>
-                  <div style={{ fontSize:".75rem", fontWeight:600, color:"#374151", marginBottom:".5rem", textTransform:"uppercase", letterSpacing:".05em" }}>Select Tier</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:".5rem" }}>
-                    {(Object.entries(TIERS) as [Tier, typeof TIERS[Tier]][]).map(([key, t]) => (
-                      <button key={key} onClick={() => setSelectedTier(key)} style={{ padding:".6rem .5rem", borderRadius:".5rem", border:`2px solid ${selectedTier===key ? t.color : "#e2e8f0"}`, background: selectedTier===key ? t.light : "white", cursor:"pointer", fontWeight:600, fontSize:".8rem", color: selectedTier===key ? t.color : "#64748b", transition:"all .15s" }}>
-                        {t.label}<br/><span style={{ fontSize:".68rem", fontWeight:400 }}>${t.price}/ea</span>
-                      </button>
-                    ))}
-                  </div>
+            {t && (
+              <div style={{ background:"linear-gradient(135deg,#1e1b4b,#312e81)", padding:".9rem 1.25rem", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"1rem" }}>
+                <div>
+                  <div style={{ color:"#a5b4fc", fontSize:".68rem", fontWeight:600, textTransform:"uppercase", letterSpacing:".08em", marginBottom:".2rem" }}>{t.label} · {checkout.qty}-Pack</div>
+                  <div style={{ color:"white", fontSize:".82rem" }}>{checkout.qty} PR Credits · {t.outlets} outlets each</div>
                 </div>
-
-                {/* Pack selector */}
-                <div style={{ marginBottom:"1.25rem" }}>
-                  <div style={{ fontSize:".75rem", fontWeight:600, color:"#374151", marginBottom:".5rem", textTransform:"uppercase", letterSpacing:".05em" }}>Select Pack</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:".5rem" }}>
-                    {PACKS.map(p => (
-                      <button key={p.qty} onClick={() => setSelectedQty(p.qty)} style={{ padding:".75rem .5rem", borderRadius:".5rem", border:`2px solid ${selectedQty===p.qty ? tier.color : "#e2e8f0"}`, background: selectedQty===p.qty ? tier.light : "white", cursor:"pointer", position:"relative", transition:"all .15s" }}>
-                        {p.badge && <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", background:tier.color, color:"white", fontSize:".6rem", fontWeight:700, padding:".1rem .4rem", borderRadius:"99px", whiteSpace:"nowrap" }}>{p.badge}</div>}
-                        <div style={{ fontWeight:700, fontSize:".9rem", color: selectedQty===p.qty ? tier.color : "#1e293b" }}>{p.qty}</div>
-                        <div style={{ fontSize:".7rem", color:"#64748b" }}>credits</div>
-                        {(p.qty === 6 || p.qty === 12) && <div style={{ fontSize:".65rem", color:"#10b981", fontWeight:600, marginTop:".2rem" }}>+1 bonus*</div>}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ fontSize:".68rem", color:"#94a3b8", marginTop:".5rem" }}>*+1 bonus credit when a promo code is applied on 6 or 12-packs</div>
-                </div>
-
-                {/* Summary */}
-                <div style={{ background:"linear-gradient(135deg,#1e1b4b,#312e81)", borderRadius:".75rem", padding:"1rem 1.25rem", marginBottom:"1rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <div>
-                    <div style={{ color:"#a5b4fc", fontSize:".7rem", fontWeight:600, marginBottom:".2rem" }}>{tier.label} · {selectedQty}-Pack</div>
-                    <div style={{ color:"white", fontSize:".82rem" }}>{selectedQty} PR credits · {tier.outlets}+ outlets each</div>
-                  </div>
-                  <div style={{ color:"white", fontWeight:900, fontSize:"1.4rem" }}>${totalPrice}</div>
-                </div>
-
-                {checkoutError && <div style={{ background:"#fff1f2", border:"1px solid #fecdd3", borderRadius:".5rem", padding:".65rem .9rem", fontSize:".82rem", color:"#be123c", marginBottom:".75rem" }}>{checkoutError}</div>}
-
-                <button onClick={startCheckout} disabled={checkoutLoading} className="btn-primary" style={{ width:"100%", justifyContent:"center", padding:".8rem", fontSize:".95rem", fontWeight:700 }}>
-                  {checkoutLoading ? "Preparing checkout…" : `Continue to Payment · $${totalPrice}`}
-                </button>
-              </div>
-            ) : (
-              <div style={{ padding:"0" }}>
-                {testMode && (
-                <div style={{ background:"#fef3c7", border:"1px solid #f59e0b", borderRadius:".4rem", padding:".4rem .75rem", fontSize:".72rem", fontWeight:700, color:"#92400e", marginBottom:".75rem", display:"flex", alignItems:"center", gap:".4rem" }}>
-                  🧪 TEST MODE — use card 4242 4242 4242 4242
-                </div>
-              )}
-              <EmbeddedCheckoutProvider stripe={getStripe(stripePk)} options={{
-                  fetchClientSecret: () => Promise.resolve(clientSecret),
-                  onComplete: () => {
-                    showToast(`${selectedQty} ${tier.label} credits purchased! 🎉`);
-                    setShowPurchase(false); setClientSecret(null);
-                    setTimeout(loadCredits, 3000); // wait for webhook
-                  },
-                }}>
-                  <EmbeddedCheckout/>
-                </EmbeddedCheckoutProvider>
+                <div style={{ color:"white", fontWeight:900, fontSize:"1.4rem", flexShrink:0 }}>${(t.price * checkout.qty).toLocaleString()}</div>
               </div>
             )}
+            <div>
+              {checkoutLoading && (
+                <div style={{ display:"flex", justifyContent:"center", alignItems:"center", padding:"3rem", color:"#64748b", gap:".75rem" }}>
+                  <div style={{ width:20, height:20, border:"2px solid #e2e8f0", borderTopColor:"#6366f1", borderRadius:"50%", animation:"spin .8s linear infinite" }}/>
+                  Loading secure checkout…
+                </div>
+              )}
+              {checkoutError && (
+                <div style={{ padding:"1.25rem" }}>
+                  <div style={{ background:"#fff1f2", border:"1px solid #fecdd3", borderRadius:".5rem", padding:".75rem 1rem", fontSize:".82rem", color:"#be123c", textAlign:"center" }}>
+                    {checkoutError}
+                    <button onClick={() => { setCheckoutError(""); if(checkout) openCheckout(checkout.tier, checkout.qty); }} style={{ display:"block", margin:".5rem auto 0", fontSize:".78rem", color:"#6366f1", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}>Try again</button>
+                  </div>
+                </div>
+              )}
+              {clientSecret && (
+                <>
+                  {testMode && (
+                    <div style={{ margin:".75rem 1.25rem 0", background:"#fef3c7", border:"1px solid #f59e0b", borderRadius:".4rem", padding:".4rem .75rem", fontSize:".72rem", fontWeight:700, color:"#92400e", display:"flex", alignItems:"center", gap:".4rem" }}>
+                      🧪 TEST MODE — card: 4242 4242 4242 4242 · exp 12/34 · CVC 123
+                    </div>
+                  )}
+                  <EmbeddedCheckoutProvider stripe={getStripe(stripePk)} options={{
+                    fetchClientSecret: () => Promise.resolve(clientSecret),
+                    onComplete: () => handlePurchaseComplete(checkout!.tier, checkout!.qty),
+                  }}>
+                    <EmbeddedCheckout/>
+                  </EmbeddedCheckoutProvider>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -213,8 +231,8 @@ export default function CreditWallet({ locationId, showToast }: Props) {
   );
 }
 
-// Credit log sub-component
-function CreditLog({ locationId }: { locationId: string }) {
+// ── Transactions ────────────────────────────────────────────────────────────
+function TransactionLog({ locationId }: { locationId: string }) {
   const [logs,    setLogs]    = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -222,11 +240,8 @@ function CreditLog({ locationId }: { locationId: string }) {
     const load = async () => {
       setLoading(true);
       try {
-        const res  = await fetch("https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/supabase-proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ table:"credit_logs", operation:"select_many", eq:{ location_id: locationId }, order:{ col:"created_at", ascending:false }, limit:20 }),
-        });
+        const res  = await fetch(PROXY, { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ table:"credit_logs", operation:"select_many", eq:{ location_id:locationId }, order:{ col:"created_at", ascending:false }, limit:50 }) });
         const data = await res.json();
         setLogs(data.data ?? []);
       } catch { setLogs([]); }
@@ -235,30 +250,49 @@ function CreditLog({ locationId }: { locationId: string }) {
     load();
   }, [locationId]);
 
-  if (loading) return null;
-  if (logs.length === 0) return null;
+  const TIER_COLORS: Record<string,string> = { starter:"#6366f1", standard:"#8929bd", premium:"#d97706" };
+  const REASON_ICON: Record<string,string>  = { "Stripe Purchase":"💳", "PR Launch":"🚀", "Promotion Bonus":"🎁", "System Bonus":"⭐" };
 
   return (
-    <div className="card" style={{ padding:"1.25rem" }}>
-      <h3 style={{ fontWeight:700, fontSize:".95rem", marginBottom:"1rem", color:"#1e293b" }}>Credit History</h3>
-      <div style={{ display:"flex", flexDirection:"column", gap:".5rem" }}>
-        {logs.map((log, i) => (
-          <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:".6rem .75rem", background:"#f8fafc", borderRadius:".5rem", fontSize:".82rem" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
-              <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount > 0 ? "#dcfce7" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".85rem", flexShrink:0 }}>
-                {log.change_amount > 0 ? "➕" : "🚀"}
-              </span>
-              <div>
-                <div style={{ fontWeight:600, color:"#1e293b", textTransform:"capitalize" }}>{log.tier} · {log.reason}</div>
-                <div style={{ color:"#94a3b8", fontSize:".72rem" }}>{new Date(log.created_at).toLocaleDateString()}</div>
-              </div>
-            </div>
-            <span style={{ fontWeight:700, color: log.change_amount > 0 ? "#10b981" : "#ef4444" }}>
-              {log.change_amount > 0 ? `+${log.change_amount}` : log.change_amount}
-            </span>
-          </div>
-        ))}
+    <div>
+      <div style={{ marginBottom:"1.25rem" }}>
+        <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#1e293b", margin:0 }}>Transactions</h2>
+        <p style={{ color:"#64748b", fontSize:".83rem", margin:".25rem 0 0" }}>Full history of credit purchases, bonuses and PR launches</p>
       </div>
+      {loading ? (
+        <div style={{ display:"flex", justifyContent:"center", padding:"3rem", color:"#94a3b8" }}>Loading…</div>
+      ) : logs.length === 0 ? (
+        <div className="card" style={{ padding:"3rem", textAlign:"center", color:"#94a3b8" }}>
+          <div style={{ fontSize:"2rem", marginBottom:".75rem" }}>📋</div>
+          <div style={{ fontWeight:600 }}>No transactions yet</div>
+          <div style={{ fontSize:".82rem", marginTop:".25rem" }}>Credit purchases and PR launches will appear here</div>
+        </div>
+      ) : (
+        <div className="card" style={{ overflow:"hidden" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>
+            <span>Description</span><span>Tier</span><span>Credits</span><span>Date</span>
+          </div>
+          {logs.map((log, i) => (
+            <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<logs.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".65rem" }}>
+                <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount>0 ? "#f0fdf4" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".9rem", flexShrink:0 }}>
+                  {REASON_ICON[log.reason] ?? "📝"}
+                </span>
+                <span style={{ fontSize:".83rem", fontWeight:600, color:"#1e293b" }}>{log.reason}</span>
+              </div>
+              <span style={{ fontSize:".73rem", fontWeight:700, textTransform:"capitalize", color:TIER_COLORS[log.tier] ?? "#64748b", background: log.tier==="starter" ? "#eef2ff" : log.tier==="standard" ? "#f5f3ff" : "#fffbeb", padding:".2rem .55rem", borderRadius:"99px" }}>
+                {log.tier}
+              </span>
+              <span style={{ fontSize:".9rem", fontWeight:800, color: log.change_amount>0 ? "#10b981" : "#ef4444", textAlign:"right" }}>
+                {log.change_amount>0 ? `+${log.change_amount}` : log.change_amount}
+              </span>
+              <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
+                {new Date(log.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
