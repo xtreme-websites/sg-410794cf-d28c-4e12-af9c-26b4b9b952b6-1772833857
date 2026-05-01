@@ -33,6 +33,12 @@ interface PRFormData {
   about: string; quote: string; keywords: string[]; wordCount: string;
   mainFocus: string; theme: string; videoUrl: string; mapsEmbed: string;
   featuredImage: File | null;
+  includePartnerQuote: "no" | "yes";
+  partnerQuote: string;
+  partnerAttribution: string;
+}
+  mainFocus: string; theme: string; videoUrl: string; mapsEmbed: string;
+  featuredImage: File | null;
 }
 
 interface PRCreatorProps {
@@ -52,7 +58,7 @@ export default function PRCreator({
   selectedTopic, onClearTopic, onNavigateToTopics,
   onOpenCompanyData, onPlaceOrder, onOpenCheckout, showToast,
 }: PRCreatorProps) {
-  const [prFormData,           setPrFormData]           = useState<PRFormData>({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null });
+  const [prFormData,           setPrFormData]           = useState<PRFormData>({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" });
   const [generatedPR,          setGeneratedPR]          = useState("");
   const [isLoading,            setIsLoading]            = useState(false);
   const [showGeneratedView,    setShowGeneratedView]    = useState(false);
@@ -76,12 +82,23 @@ export default function PRCreator({
     }
     setIsLoading(true); setShowGeneratedView(false); setRefinementCount(0);
     try {
-      const { about, quote, keywords: kw, wordCount, mainFocus, theme, videoUrl } = prFormData;
+      const { about, quote, keywords: kw, wordCount, mainFocus, theme, videoUrl, partnerQuote, partnerAttribution, includePartnerQuote } = prFormData;
       const kwText   = kw.length > 0 ? kw.join(", ") : "no specific keywords";
       const topicRef = selectedTopic && refMode === "topic" ? `\nBase this on trending angle: "${selectedTopic.selectedIdea || selectedTopic.title}"` : "";
       const extRef   = externalRef.trim() && refMode === "external" ? `\nUse the following as a style/structure reference — adapt the format and tone but write entirely new content for ${companyName || "this company"}:\n---\n${externalRef.trim()}\n---` : "";
       const coAbout  = companyData.about ? `\nCompany background: ${companyData.about}` : "";
       const contact  = [companyData.email, companyData.phone, companyData.address].filter(Boolean).join(" | ");
+
+      // Build owner quote block (paragraph 3)
+      const ownerName = quoteAttribution || "Company Spokesperson";
+      const ownerQuoteBlock = `<p><strong>${ownerName}, shared:</strong></p>\n<p><em>"${quote}"</em></p>`;
+
+      // Build partner quote block (paragraph 5) if included
+      const hasPartner = includePartnerQuote === "yes" && partnerQuote.trim();
+      const partnerQuoteBlock = hasPartner
+        ? `<p><strong>${partnerAttribution || "Partner"}, added:</strong></p>\n<p><em>"${partnerQuote}"</em></p>`
+        : "";
+
       const prompt = customPRPrompt
         ? customPRPrompt
             .replace(/{companyName}/g, companyName).replace(/{industry}/g, industry)
@@ -92,9 +109,25 @@ export default function PRCreator({
         : `Write a professional press release for ${companyName || "our company"} in the ${industry || "business"} industry.
 REQUIREMENTS: ~${wordCount} words, focus: ${mainFocus}, tone: ${theme}, keywords: ${kwText}, website: ${siteUrl || "N/A"}.${topicRef}${extRef}${coAbout}
 CONTENT: ${about}
-QUOTE: "${quote}" — ${quoteAttribution || "Company Spokesperson"}${videoUrl ? `\nVIDEO REFERENCE: ${videoUrl}` : ""}
-FORMAT with HTML tags: <h1> headline, <p><strong>FOR IMMEDIATE RELEASE</strong></p>, dateline paragraph, 3-4 body paragraphs, quote with <em>, <h2>About ${companyName || "Company"}</h2> with description, <h2>Contact Information</h2> with ${contact || siteUrl || "contact details"}.
+${videoUrl ? `VIDEO REFERENCE: ${videoUrl}` : ""}
+
+MANDATORY STRUCTURE — use exactly this HTML structure, preserving the paragraph order:
+<h1>[Compelling headline]</h1>
+<p><strong>FOR IMMEDIATE RELEASE</strong></p>
+<p>[City, State] — [Dateline intro paragraph about the news]</p>
+<p>[2nd body paragraph expanding on the news]</p>
+${ownerQuoteBlock}
+<p>[4th paragraph: supporting detail, context, or additional company info]</p>
+${hasPartner ? partnerQuoteBlock : "<p>[5th paragraph: call to action or closing detail]</p>"}
+${hasPartner ? "<p>[6th paragraph: call to action or closing detail]</p>" : ""}
+<h2>About ${companyName || "Company"}</h2>
+<p>[Company boilerplate description]</p>
+<h2>Contact Information</h2>
+<p>${contact || siteUrl || "contact details"}</p>
+
+Do NOT move or reorder the quote blocks. Keep the owner's quote as paragraph 3 and${hasPartner ? " the partner's quote as paragraph 5." : " maintain the structure above."}
 Make it genuinely newsworthy and professionally written.`;
+
       const text = await callClaude(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
       setGeneratedPR(text);
       setShowGeneratedView(true);
@@ -436,6 +469,29 @@ Make it genuinely newsworthy and professionally written.`;
               <textarea value={prFormData.quote} onChange={e => setPrFormData(p => ({ ...p, quote: e.target.value }))} placeholder="Enter a compelling quote from a company spokesperson..." className="field-input" style={{ height: "80px", resize: "vertical", lineHeight: 1.6 }}/>
             </div>
 
+            {/* Partner Quote toggle */}
+            <div>
+              <label className="field-label">Include a Partner's Quote</label>
+              <select value={prFormData.includePartnerQuote} onChange={e => setPrFormData(p => ({ ...p, includePartnerQuote: e.target.value as "yes"|"no" }))} className="field-input">
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </div>
+
+            {/* Partner Quote fields (shown when Yes) */}
+            {prFormData.includePartnerQuote === "yes" && (
+              <>
+                <div>
+                  <label className="field-label">Partner's Quote <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span></label>
+                  <textarea value={prFormData.partnerQuote} onChange={e => setPrFormData(p => ({ ...p, partnerQuote: e.target.value }))} placeholder="Enter a quote from the partner..." className="field-input" style={{ height: "80px", resize: "vertical", lineHeight: 1.6 }}/>
+                </div>
+                <div>
+                  <label className="field-label">Partner's Name, Position &amp; Company</label>
+                  <input value={prFormData.partnerAttribution} onChange={e => setPrFormData(p => ({ ...p, partnerAttribution: e.target.value }))} placeholder="e.g. Jane Smith, CEO of Acme Corp" className="field-input"/>
+                </div>
+              </>
+            )}
+
             {/* Optional media */}
             <details>
               <summary style={{ fontSize: ".82rem", fontWeight: 600, color: "#64748b", cursor: "pointer", padding: ".5rem 0", borderTop: "1px solid #f1f5f9", userSelect: "none" }}>＋ Optional Media (Image, Video, Map)</summary>
@@ -464,7 +520,7 @@ Make it genuinely newsworthy and professionally written.`;
               <button onClick={generatePressRelease} disabled={isLoading} className="btn-primary" style={{ flex: 1, justifyContent: "center", padding: ".8rem" }}>
                 {isLoading ? <><LoaderIcon size={16}/> Generating...</> : <><SparklesIcon size={16}/> Generate Press Release</>}
               </button>
-              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null }); onClearTopic(); setExternalRef(""); if (externalRefEl.current) externalRefEl.current.innerHTML = ""; showToast("Form cleared"); }} className="btn-secondary">Clear</button>
+              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" }); onClearTopic(); setExternalRef(""); if (externalRefEl.current) externalRefEl.current.innerHTML = ""; showToast("Form cleared"); }} className="btn-secondary">Clear</button>
             </div>
           </div>
         </div>
