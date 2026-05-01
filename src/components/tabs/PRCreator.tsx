@@ -96,8 +96,8 @@ export default function PRCreator({
         ? `<h2>${partnerAttribution || "Partner"}, added:</h2>\n<p><em>"${partnerQuote}"</em></p>`
         : "";
 
-      // Contact info — each piece on its own line
-      const contactParts = [companyData.email, companyData.phone, companyData.address, siteUrl].filter(Boolean);
+      // Contact info — each piece on its own line, no labels
+      const contactParts = [companyData.email, companyData.phone, companyData.address, siteUrl ? `<a href="${siteUrl}" target="_blank">${siteUrl}</a>` : ""].filter(Boolean);
       const contactHTML = contactParts.length
         ? contactParts.map(c => `<p>${c}</p>`).join("\n")
         : `<p>${siteUrl || "contact details"}</p>`;
@@ -145,7 +145,8 @@ RULES:
 - Title MUST be 10 words or fewer — no exceptions.
 - Keep the owner's quote as paragraph 3${hasPartner ? " and partner's quote as paragraph 5" : ""}.
 - All h2 headings (About, Contact, and quote attributions) use <h2> tags.
-- Each contact detail (email, phone, address, website) on its own <p> line.
+- Contact details: output each one as its own <p> tag — NO labels like "Email:", "Phone:", "Address:", "Website:". Just the raw value.
+- Do NOT add "Learn more at..." or any website link inside the About section body text. The website is already in the Contact section.
 - Make it genuinely newsworthy and professionally written.`;
 
       const text = await callClaude(prompt, "You are an expert PR writer at a top agency. Write polished, publish-ready HTML press releases.", 2000);
@@ -212,6 +213,17 @@ RULES:
                 {[["🏆", "Massive Social Proof"], ["🎯", "Attract Potential Customers"], ["📈", "Top Rankings on Google"], ["🔗", "Valuable SEO Backlinks"]].map(([e, t]) => (
                   <div key={t} style={{ display: "flex", alignItems: "center", gap: ".5rem", marginBottom: ".3rem", fontSize: ".8rem", color: "#374151" }}><span>{e}</span>{t}</div>
                 ))}
+                {/* Coupon */}
+                <div style={{ marginTop: "1rem", background: "linear-gradient(135deg,#fef9c3,#fef3c7)", border: "1.5px dashed #f59e0b", borderRadius: ".6rem", padding: ".65rem .9rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#92400e", marginBottom: ".15rem" }}>🎉 Platform Discount</div>
+                    <div style={{ fontSize: ".8rem", color: "#78350f" }}>Congratulations! You qualify for a <strong>20% Discount</strong> for using the Platform</div>
+                  </div>
+                  <button onClick={() => { navigator.clipboard.writeText("20MBAPP"); showToast("Coupon code copied!"); }} style={{ background: "#f59e0b", color: "white", border: "none", borderRadius: ".4rem", padding: ".35rem .75rem", fontSize: ".78rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: ".35rem", transition: "background .15s" }}
+                    onMouseOver={e => e.currentTarget.style.background = "#d97706"} onMouseOut={e => e.currentTarget.style.background = "#f59e0b"}>
+                    📋 20MBAPP
+                  </button>
+                </div>
               </div>
               <div style={{ background: "white", borderRadius: ".875rem", padding: "1.25rem", border: "2px solid #c7d2fe", minWidth: "195px" }}>
                 {prFormData.wordCount === "350" && (
