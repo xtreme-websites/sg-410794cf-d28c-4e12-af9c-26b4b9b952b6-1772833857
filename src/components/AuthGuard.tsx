@@ -1,7 +1,11 @@
 import { useState, useEffect, ReactNode } from "react";
 
-const VALIDATE_URL = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/validate-embed-token";
-const SESSION_KEY  = "mbb_session";
+const VALIDATE_URL    = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/validate-embed-token";
+const SESSION_KEY     = "mbb_session";
+const ALLOWED_ORIGINS = ["https://app.xtremeautomator.com", "https://media-blast-boosters.vercel.app"];
+
+// Dev mode: set to true to bypass iframe + token check locally
+const DEV_MODE = import.meta.env.DEV;
 
 interface Session { location_id: string; validated_at: number; }
 
@@ -20,6 +24,9 @@ export default function AuthGuard({ locationId, children }: Props) {
 
   useEffect(() => {
     const validate = async () => {
+      // DEV MODE: bypass all checks in local dev
+      if (DEV_MODE) { setStatus("ok"); return; }
+
       // Already have a valid session for this location
       const session = getSession();
       if (session && session.location_id === locationId && locationId) {
@@ -33,11 +40,17 @@ export default function AuthGuard({ locationId, children }: Props) {
       const inFrame = window !== window.top;
       if (!inFrame) { setStatus("blocked"); return; }
 
+      // Check parent origin if accessible
+      try {
+        const parentOrigin = document.referrer ? new URL(document.referrer).origin : "";
+        if (parentOrigin && !ALLOWED_ORIGINS.includes(parentOrigin)) {
+          setStatus("blocked"); return;
+        }
+      } catch { /* referrer may be empty, continue */ }
+
       // Get token from URL
       const params = new URLSearchParams(window.location.search);
       const token  = params.get("token");
-
-      // No token → block
       if (!token) { setStatus("blocked"); return; }
 
       // Validate token with edge function
