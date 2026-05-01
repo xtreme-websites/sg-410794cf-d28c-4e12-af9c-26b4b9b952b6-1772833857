@@ -37,9 +37,6 @@ interface PRFormData {
   partnerQuote: string;
   partnerAttribution: string;
 }
-  mainFocus: string; theme: string; videoUrl: string; mapsEmbed: string;
-  featuredImage: File | null;
-}
 
 interface PRCreatorProps {
   companyData: CompanyData;
