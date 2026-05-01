@@ -45,7 +45,7 @@ export default function CheckoutModal({
           body: JSON.stringify({ packageType, returnUrl, locationId, prTitle }),
         });
         const data = await res.json();
-        if (data.error) setError(data.error);  // temp: show raw error for debugging
+        if (data.error) setError("Unable to load checkout. Please try again.");
         else setClientSecret(data.clientSecret);
       } catch {
         setError("Could not connect to checkout. Please try again.");

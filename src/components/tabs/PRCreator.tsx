@@ -68,6 +68,7 @@ export default function PRCreator({
   const [showThemeDropdown,    setShowThemeDropdown]    = useState(false);
   const [refMode,              setRefMode]              = useState<"topic" | "external">("topic");
   const [externalRef,          setExternalRef]          = useState("");
+  const [imagePreviewUrl,      setImagePreviewUrl]      = useState<string | null>(null);
   const externalRefEl = useRef<HTMLDivElement>(null);
 
   const { name: companyName, industry, websiteUrl: siteUrl, quoteAttribution } = companyData;
@@ -192,10 +193,24 @@ RULES:
           <div className="card" style={{ padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: ".75rem" }}>
               <h2 className="font-display" style={{ fontSize: "1.2rem", fontWeight: 700, color: "#0f172a" }}>Generated Press Release</h2>
-              <button onClick={() => setShowGeneratedView(false)} className="btn-secondary" style={{ fontSize: ".8rem" }}>
+              <button onClick={() => {
+                setShowGeneratedView(false);
+                // Restore external ref content into the contentEditable div
+                setTimeout(() => {
+                  if (externalRefEl.current && externalRef) {
+                    externalRefEl.current.innerHTML = externalRef;
+                  }
+                }, 50);
+              }} className="btn-secondary" style={{ fontSize: ".8rem" }}>
                 <BackIcon size={14}/> Back to Edit
               </button>
             </div>
+            {/* Featured image above PR content */}
+            {imagePreviewUrl && (
+              <div style={{ marginBottom: "1rem" }}>
+                <img src={imagePreviewUrl} alt="Featured" style={{ width: "100%", maxHeight: 320, objectFit: "cover", borderRadius: ".5rem", border: "1px solid #e2e8f0" }}/>
+              </div>
+            )}
             <div className="prose" style={{ maxWidth: "none", padding: "1rem", background: "#f8fafc", borderRadius: ".6rem", border: "1px solid #e2e8f0" }}
               dangerouslySetInnerHTML={{ __html: generatedPR }}/>
             <div style={{ display: "flex", gap: ".75rem", marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9", flexWrap: "wrap" }}>
@@ -535,7 +550,7 @@ RULES:
                   <label className="field-label">Featured Image</label>
                   <div className="field-input" style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
                     <UploadIcon size={14}/>
-                    <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setPrFormData(p => ({ ...p, featuredImage: f })); showToast("Image added"); } }} style={{ flex: 1, fontSize: ".78rem", border: "none", outline: "none" }}/>
+                    <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setPrFormData(p => ({ ...p, featuredImage: f })); setImagePreviewUrl(URL.createObjectURL(f)); showToast("Image added"); } }} style={{ flex: 1, fontSize: ".78rem", border: "none", outline: "none" }}/>
                     {prFormData.featuredImage && <CheckIcon size={14}/>}
                   </div>
                 </div>
@@ -555,7 +570,7 @@ RULES:
               <button onClick={generatePressRelease} disabled={isLoading} className="btn-primary" style={{ flex: 1, justifyContent: "center", padding: ".8rem" }}>
                 {isLoading ? <><LoaderIcon size={16}/> Generating...</> : <><SparklesIcon size={16}/> Generate Press Release</>}
               </button>
-              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" }); onClearTopic(); setExternalRef(""); if (externalRefEl.current) externalRefEl.current.innerHTML = ""; showToast("Form cleared"); }} className="btn-secondary">Clear</button>
+              <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" }); onClearTopic(); setExternalRef(""); setImagePreviewUrl(null); if (externalRefEl.current) externalRefEl.current.innerHTML = ""; showToast("Form cleared"); }} className="btn-secondary">Clear</button>
             </div>
           </div>
         </div>
