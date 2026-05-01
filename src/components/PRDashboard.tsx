@@ -5,6 +5,7 @@ import { CompanyData, Topic, Order, EMPTY_COMPANY, PR_PACKAGES } from "../lib/co
 import { ZapIcon, BuildingIcon, SettingsIcon, CheckIcon, AlertIcon, NewsIcon, BarIcon, ShieldIcon, BriefIcon, CartIcon } from "./icons";
 import CompanyDataModal from "./CompanyDataModal";
 import SettingsModal from "./SettingsModal";
+import CheckoutModal from "./CheckoutModal";
 import TrendingTopics from "./tabs/TrendingTopics";
 import CompetitorAnalysis from "./tabs/CompetitorAnalysis";
 import TrustAssets from "./tabs/TrustAssets";
@@ -72,6 +73,7 @@ export default function PRDashboard() {
   const [showCompanyData, setShowCompanyData] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
   const [toast,           setToast]           = useState<{ message: string; type: string } | null>(null);
+  const [checkoutPackage, setCheckoutPackage] = useState<{type:string;title:string;content:string}|null>(null);
 
   const locationId = useMemo(() => {
     try {
@@ -240,7 +242,7 @@ export default function PRDashboard() {
           {activeTab === "topics"     && <TrendingTopics companyData={companyData} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
           {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
           {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
-          {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} showToast={showToast}/>}
+          {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} onOpenCheckout={(type,title,content) => setCheckoutPackage({type,title,content})} showToast={showToast}/>}
           {activeTab === "orders"     && <Orders orders={orders} showThankYou={showThankYou} onNavigateToPR={() => setActiveTab("pr")}/>}
         </main>
       </div>
@@ -249,6 +251,17 @@ export default function PRDashboard() {
       <CompanyDataModal isOpen={showCompanyData} onClose={() => setShowCompanyData(false)} companyData={companyData} onSave={saveCompanyData} showToast={showToast}/>
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} webhookUrl={webhookUrl} customPRPrompt={customPRPrompt}
         onSave={({ webhookUrl: w, customPRPrompt: p }) => { setWebhookUrl(w); setCustomPRPrompt(p); }} showToast={showToast}/>
+      <CheckoutModal
+        isOpen={!!checkoutPackage}
+        onClose={() => setCheckoutPackage(null)}
+        packageType={checkoutPackage?.type ?? ""}
+        prTitle={checkoutPackage?.title ?? ""}
+        locationId={locationId}
+        onOrderComplete={(pkgType) => {
+          if (checkoutPackage) placeOrder(pkgType, checkoutPackage.title, checkoutPackage.content);
+        }}
+        showToast={showToast}
+      />
 
       {/* ══ TOAST ═════════════════════════════════════════════════════════════ */}
       {toast && (

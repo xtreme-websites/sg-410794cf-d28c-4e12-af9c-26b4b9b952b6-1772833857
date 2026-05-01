@@ -43,13 +43,14 @@ interface PRCreatorProps {
   onNavigateToTopics: () => void;
   onOpenCompanyData: () => void;
   onPlaceOrder: (packageType: string, prTitle: string, prContent: string) => void;
+  onOpenCheckout: (packageType: string, prTitle: string, prContent: string) => void;
   showToast: (msg: string, type?: "success" | "error") => void;
 }
 
 export default function PRCreator({
   companyData, customPRPrompt,
   selectedTopic, onClearTopic, onNavigateToTopics,
-  onOpenCompanyData, onPlaceOrder, showToast,
+  onOpenCompanyData, onPlaceOrder, onOpenCheckout, showToast,
 }: PRCreatorProps) {
   const [prFormData,           setPrFormData]           = useState<PRFormData>({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null });
   const [generatedPR,          setGeneratedPR]          = useState("");
@@ -124,7 +125,7 @@ Make it genuinely newsworthy and professionally written.`;
 
   const handlePlaceOrder = (packageType: string) => {
     const prTitle = prFormData.about.slice(0, 80) || "Press Release";
-    onPlaceOrder(packageType, prTitle, generatedPR);
+    onOpenCheckout(packageType, prTitle, generatedPR);
   };
 
   return (
