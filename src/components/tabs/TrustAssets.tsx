@@ -318,7 +318,7 @@ export default function TrustAssets({ orders, locationId, showToast }: TrustAsse
       {/* Header + tier pills */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1.25rem", flexWrap:"wrap", gap:".75rem" }}>
         <div>
-          <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Brand Trust Assets</h2>
+          <h2 className="font-display" style={{ fontSize:"1.3rem", fontWeight:700, color:"#0f172a", marginBottom:".2rem" }}>Brand Trust Widgets</h2>
           <p style={{ color:"#64748b", fontSize:".875rem" }}>Embed a professional trust badge on your website</p>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:".4rem" }}>

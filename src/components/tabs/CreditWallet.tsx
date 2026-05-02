@@ -12,11 +12,18 @@ const stripePromises: Record<string, ReturnType<typeof loadStripe>> = {};
 const getStripe = (pk: string) => { if (!stripePromises[pk]) stripePromises[pk] = loadStripe(pk); return stripePromises[pk]; };
 
 const TIERS = {
-  starter:  { label:"Starter",  color:"#6366f1", light:"#eef2ff", price:397, outlets:"200+", words:350,  readers:"2.2M",   authority:69 },
-  standard: { label:"Standard", color:"#8929bd", light:"#f5f3ff", price:697, outlets:"300+", words:500,  readers:"26.4M",  authority:88 },
-  premium:  { label:"Premium",  color:"#d97706", light:"#fffbeb", price:897, outlets:"450+", words:1000, readers:"224.5M", authority:94 },
+  starter:  { label:"Starter",  color:"#6366f1", light:"#eef2ff", outlets:"200+", words:350,  readers:"2.2M",   authority:69 },
+  standard: { label:"Standard", color:"#8929bd", light:"#f5f3ff", outlets:"300+", words:500,  readers:"26.4M",  authority:88 },
+  premium:  { label:"Premium",  color:"#d97706", light:"#fffbeb", outlets:"450+", words:1000, readers:"224.5M", authority:94 },
 } as const;
 type Tier = keyof typeof TIERS;
+
+// Per-pack pricing (volume discount per credit)
+const PACK_PRICES: Record<Tier, Record<number,number>> = {
+  starter:  { 3: 397, 6: 377, 12: 357 },
+  standard: { 3: 597, 6: 577, 12: 557 },
+  premium:  { 3: 897, 6: 877, 12: 857 },
+};
 
 const PACKS = [
   { qty:3,  label:"3-Pack",  badge:null,           bonus:false },
@@ -55,7 +62,7 @@ export default function CreditWallet({ locationId, showToast }: Props) {
     try {
       const returnUrl = `${window.location.origin}${window.location.pathname}${window.location.search}&checkout=complete`;
       const res  = await fetch(CHECKOUT_URL, { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ tier, quantity:qty, locationId, returnUrl }) });
+        body: JSON.stringify({ tier, quantity:qty, pricePerCredit: PACK_PRICES[tier][qty], locationId, returnUrl }) });
       const data = await res.json();
       if (data.error) setCheckoutError("Unable to load checkout. Please try again.");
       else { setClientSecret(data.clientSecret); setTestMode(!!data.testMode); }
@@ -119,8 +126,8 @@ export default function CreditWallet({ locationId, showToast }: Props) {
                         {p.bonus && <div style={{ fontSize:".65rem", color:"#10b981", fontWeight:700, marginTop:".1rem" }}>+1 bonus w/ promo*</div>}
                       </div>
                       <div style={{ textAlign:"center", marginBottom:".75rem" }}>
-                        <div style={{ fontSize:"1.05rem", fontWeight:800, color:ti.color }}>${(ti.price * p.qty).toLocaleString()}</div>
-                        <div style={{ fontSize:".67rem", color:"#94a3b8" }}>${ti.price}/ea</div>
+                        <div style={{ fontSize:"1.05rem", fontWeight:800, color:ti.color }}>${(PACK_PRICES[key][p.qty] * p.qty).toLocaleString()}</div>
+                        <div style={{ fontSize:".67rem", color:"#94a3b8" }}>${PACK_PRICES[key][p.qty]}/ea</div>
                       </div>
                       <button onClick={() => openCheckout(key, p.qty)} style={{ width:"100%", padding:".5rem", borderRadius:".45rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".78rem", background:ti.color, color:"white" }}
                         onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
@@ -190,7 +197,7 @@ export default function CreditWallet({ locationId, showToast }: Props) {
                   <div style={{ color:"#a5b4fc", fontSize:".68rem", fontWeight:600, textTransform:"uppercase", letterSpacing:".08em", marginBottom:".2rem" }}>{t.label} · {checkout.qty}-Pack</div>
                   <div style={{ color:"white", fontSize:".82rem" }}>{checkout.qty} PR Credits · {t.outlets} outlets each</div>
                 </div>
-                <div style={{ color:"white", fontWeight:900, fontSize:"1.4rem", flexShrink:0 }}>${(t.price * checkout.qty).toLocaleString()}</div>
+                <div style={{ color:"white", fontWeight:900, fontSize:"1.4rem", flexShrink:0 }}>${(PACK_PRICES[checkout.tier][checkout.qty] * checkout.qty).toLocaleString()}</div>
               </div>
             )}
             <div>
