@@ -34,6 +34,8 @@ const PACKS = [
 interface Credits { starter_credits:number; standard_credits:number; premium_credits:number; }
 interface Props { locationId:string; showToast:(msg:string, type?:"success"|"error")=>void; }
 
+const PENDING_KEY = "mbb_pending_purchase";
+
 export default function CreditWallet({ locationId, showToast }: Props) {
   const [activeTab,       setActiveTab]       = useState<"packages"|"credits"|"transactions">("credits");
   const [credits,         setCredits]         = useState<Credits>({ starter_credits:0, standard_credits:0, premium_credits:0 });
@@ -43,6 +45,7 @@ export default function CreditWallet({ locationId, showToast }: Props) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError,   setCheckoutError]   = useState("");
   const [testMode,        setTestMode]        = useState(false);
+  const [thankYou,        setThankYou]        = useState<{ tier:Tier; qty:number }|null>(null);
 
   const loadCredits = async () => {
     setLoading(true);
@@ -55,9 +58,27 @@ export default function CreditWallet({ locationId, showToast }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { loadCredits(); }, [locationId]);
+  // On mount: check for ?checkout=complete redirect from Stripe return_url
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "complete") {
+      // Clear the param from URL without reload
+      const clean = window.location.search.replace(/[&?]checkout=complete/, "");
+      window.history.replaceState({}, "", window.location.pathname + clean);
+      // Retrieve pending purchase from sessionStorage
+      try {
+        const pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "null");
+        if (pending?.tier && pending?.qty) {
+          handlePurchaseComplete(pending.tier, pending.qty, true);
+        }
+      } catch {}
+    }
+    loadCredits();
+  }, [locationId]);
 
   const openCheckout = async (tier: Tier, qty: number) => {
+    // Save pending purchase so we can recover it after redirect
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify({ tier, qty }));
     setCheckout({ tier, qty }); setClientSecret(null); setCheckoutError(""); setCheckoutLoading(true);
     try {
       const returnUrl = `${window.location.origin}${window.location.pathname}${window.location.search}&checkout=complete`;
@@ -70,15 +91,16 @@ export default function CreditWallet({ locationId, showToast }: Props) {
     setCheckoutLoading(false);
   };
 
-  const handlePurchaseComplete = async (tier: Tier, qty: number) => {
-    // Immediately apply credits (webhook is async backup)
+  const handlePurchaseComplete = async (tier: Tier, qty: number, fromRedirect = false) => {
+    sessionStorage.removeItem(PENDING_KEY);
+    // Immediately apply credits
     try {
       await fetch(PROXY, { method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ table:"profiles", operation:"increment_credits", location_id:locationId, tier, amount:qty, reason:"Stripe Purchase" }) });
     } catch {}
     await loadCredits();
-    showToast(`${qty} ${TIERS[tier].label} credits added! 🎉`);
     setCheckout(null); setClientSecret(null);
+    setThankYou({ tier, qty });
     setActiveTab("credits");
   };
 
@@ -246,6 +268,49 @@ export default function CreditWallet({ locationId, showToast }: Props) {
           </div>
         </div>
       )}
+
+      {/* ── THANK YOU MODAL ── */}
+      {thankYou && (() => {
+        const ti = TIERS[thankYou.tier];
+        const total = (PACK_PRICES[thankYou.tier][thankYou.qty] * thankYou.qty).toLocaleString();
+        const newBal = credits[`${thankYou.tier}_credits`] ?? 0;
+        return (
+          <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
+            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease", position:"relative" }}>
+              {/* Confetti ring */}
+              <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${ti.color}22, ${ti.color}44)`, border:`3px solid ${ti.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2rem" }}>
+                🎉
+              </div>
+              <h2 style={{ fontWeight:900, fontSize:"1.4rem", color:"#1e293b", margin:"0 0 .5rem" }}>Payment Successful!</h2>
+              <p style={{ color:"#64748b", fontSize:".88rem", margin:"0 0 1.5rem", lineHeight:1.6 }}>
+                Your <strong>{thankYou.qty} {ti.label} PR Credits</strong> have been added to your wallet.
+              </p>
+
+              {/* Credit summary card */}
+              <div style={{ background:`linear-gradient(135deg, ${ti.color}12, ${ti.color}06)`, border:`1px solid ${ti.color}30`, borderRadius:".75rem", padding:"1rem 1.25rem", marginBottom:"1.5rem" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
+                  <span style={{ fontSize:".78rem", color:"#64748b" }}>Credits purchased</span>
+                  <span style={{ fontWeight:800, color:ti.color, fontSize:"1rem" }}>+{thankYou.qty}</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
+                  <span style={{ fontSize:".78rem", color:"#64748b" }}>Amount charged</span>
+                  <span style={{ fontWeight:700, color:"#1e293b" }}>${total}</span>
+                </div>
+                <div style={{ height:"1px", background:"#f1f5f9", margin:".5rem 0" }}/>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:".78rem", color:"#64748b" }}>{ti.label} balance now</span>
+                  <span style={{ fontWeight:900, color:ti.color, fontSize:"1.1rem" }}>{newBal} credits</span>
+                </div>
+              </div>
+
+              <button onClick={() => setThankYou(null)} style={{ width:"100%", padding:".75rem", borderRadius:".6rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".9rem", background:`linear-gradient(135deg, ${ti.color}, ${ti.color}cc)`, color:"white", boxShadow:`0 4px 14px ${ti.color}50`, transition:"opacity .15s" }}
+                onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                Start Using My Credits 🚀
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
