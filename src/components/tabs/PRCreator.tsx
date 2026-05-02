@@ -341,6 +341,19 @@ RULES:
                 })}
               </div>
             </div>
+            {/* ── ALL FIELDS BELOW — disabled when no credits ── */}
+            <div style={{ position:"relative" }}>
+              {tierCredits(selectedTier) === 0 && (
+                <div style={{ position:"absolute", inset:0, zIndex:10, borderRadius:".75rem", background:"rgba(248,250,252,0.7)", backdropFilter:"blur(1px)", cursor:"not-allowed", display:"flex", alignItems:"flex-start", justifyContent:"center", paddingTop:"3rem" }}>
+                  <div style={{ background:"white", border:"1.5px solid #fecaca", borderRadius:".75rem", padding:".75rem 1.25rem", display:"flex", alignItems:"center", gap:".6rem", boxShadow:"0 4px 16px rgba(0,0,0,.08)" }}>
+                    <span style={{ fontSize:"1.1rem" }}>🔒</span>
+                    <span style={{ fontSize:".82rem", fontWeight:600, color:"#ef4444" }}>Purchase {selectedTier} credits to fill in this form</span>
+                    <button onClick={onOpenCredits} style={{ background:"#ef4444", color:"white", border:"none", borderRadius:".4rem", padding:".3rem .7rem", fontSize:".75rem", fontWeight:700, cursor:"pointer" }}>Buy Credits</button>
+                  </div>
+                </div>
+              )}
+              <div style={{ display:"flex", flexDirection:"column", gap:"1.1rem", pointerEvents: tierCredits(selectedTier) === 0 ? "none" : "auto", opacity: tierCredits(selectedTier) === 0 ? 0.45 : 1, transition:"opacity .2s" }}>
+
             {/* Reference section — toggle between Trending Topic and External */}
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".5rem" }}>
@@ -620,6 +633,8 @@ RULES:
               </button>
               <button onClick={() => { setPrFormData({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" }); onClearTopic(); setExternalRef(""); setImagePreviewUrl(null); if (externalRefEl.current) externalRefEl.current.innerHTML = ""; showToast("Form cleared"); }} className="btn-secondary">Clear</button>
             </div>
+              </div>{/* end inner fields div */}
+            </div>{/* end disabled wrapper */}
           </div>
         </div>
       )}

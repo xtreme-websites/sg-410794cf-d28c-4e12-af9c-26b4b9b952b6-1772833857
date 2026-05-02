@@ -128,13 +128,19 @@ export default function PRDashboard() {
     const newOrder: Order = { id: crypto.randomUUID(), prTitle, productName: packageType, price: pkg.price, date: new Date().toLocaleDateString("en-US"), prContent };
     setOrders(prev => [newOrder, ...prev]);
     setShowThankYou(true);
+    // Decrement 1 credit for the chosen tier
+    try {
+      await fetch("https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/supabase-proxy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table:"profiles", operation:"decrement_credits", location_id: locationId, tier: packageType.toLowerCase(), reason: `PR Launch — ${prTitle.slice(0,60)}` }),
+      });
+    } catch {}
     if (locationId !== "preview-mode") {
       try { await supabase.from("orders").insert({ location_id: locationId, pr_title: prTitle, product_name: packageType, package_type: packageType, price: parseFloat(pkg.price.replace("$", "")), pr_content: prContent }); } catch {}
     }
     if (webhookUrl) {
       try { await fetch(webhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event: "order.placed", location_id: locationId, order_id: newOrder.id, pr_title: prTitle, package: packageType, price: pkg.price, pr_content: prContent, company_name: companyData.name, industry: companyData.industry, timestamp: new Date().toISOString() }) }); } catch {}
     }
-    window.open(pkg.paymentLink, "_blank");
   };
 
   const handleTopicSelect = (topic: Topic & { selectedIdea?: string }) => {
