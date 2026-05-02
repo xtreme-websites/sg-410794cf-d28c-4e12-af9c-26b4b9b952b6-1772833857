@@ -69,7 +69,11 @@ export default function PRDashboard() {
   const [showThankYou,   setShowThankYou]   = useState(false);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [activeTab,       setActiveTab]       = useState("topics");
+  const [activeTab,       setActiveTab]       = useState(() => {
+    // If returning from Stripe checkout, land on orders tab directly
+    return new URLSearchParams(window.location.search).get("checkout") === "complete"
+      ? "orders" : "topics";
+  });
   const [selectedTopic,   setSelectedTopic]   = useState<(Topic & { selectedIdea?: string }) | null>(null);
   const [showCompanyData, setShowCompanyData] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
@@ -245,7 +249,7 @@ export default function PRDashboard() {
           {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
           {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
           {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} onOpenCheckout={(type,title,content) => setCheckoutPackage({type,title,content})} showToast={showToast}/>}
-          {activeTab === "orders"     && <CreditWallet locationId={locationId} showToast={showToast}/>}
+          {activeTab === "orders"     && <CreditWallet locationId={locationId} showToast={showToast} onNavigateToPR={() => setActiveTab("pr")}/>}
         </main>
       </div>
 

@@ -32,11 +32,11 @@ const PACKS = [
 ];
 
 interface Credits { starter_credits:number; standard_credits:number; premium_credits:number; }
-interface Props { locationId:string; showToast:(msg:string, type?:"success"|"error")=>void; }
+interface Props { locationId:string; showToast:(msg:string, type?:"success"|"error")=>void; onNavigateToPR?:()=>void; }
 
 const PENDING_KEY = "mbb_pending_purchase";
 
-export default function CreditWallet({ locationId, showToast }: Props) {
+export default function CreditWallet({ locationId, showToast, onNavigateToPR }: Props) {
   const [activeTab,       setActiveTab]       = useState<"packages"|"credits"|"transactions">("credits");
   const [credits,         setCredits]         = useState<Credits>({ starter_credits:0, standard_credits:0, premium_credits:0 });
   const [loading,         setLoading]         = useState(true);
@@ -273,21 +273,40 @@ export default function CreditWallet({ locationId, showToast }: Props) {
       {thankYou && (() => {
         const ti = TIERS[thankYou.tier];
         const total = (PACK_PRICES[thankYou.tier][thankYou.qty] * thankYou.qty).toLocaleString();
-        const newBal = credits[`${thankYou.tier}_credits`] ?? 0;
+        const newBal = (credits[`${thankYou.tier}_credits`] ?? 0);
         return (
           <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
-            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease", position:"relative" }}>
-              {/* Confetti ring */}
-              <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${ti.color}22, ${ti.color}44)`, border:`3px solid ${ti.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2rem" }}>
+            <style>{`
+              @keyframes confetti-fall {
+                0%   { transform: translateY(-20px) rotate(0deg);   opacity:1; }
+                100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
+              }
+              .confetti-piece { position:fixed; width:10px; height:10px; animation: confetti-fall linear forwards; z-index:1000; }
+            `}</style>
+            {/* Confetti pieces */}
+            {["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9","#f59e0b"].map((col, ci) =>
+              [0,1,2,3,4,5,6,7].map(i => (
+                <div key={`${ci}-${i}`} className="confetti-piece" style={{
+                  left: `${5 + (ci * 14) + (i * 1.5)}%`,
+                  top: `-${10 + i * 5}px`,
+                  background: col,
+                  borderRadius: i % 2 === 0 ? "50%" : "2px",
+                  animationDuration: `${2.5 + (i * 0.3) + (ci * 0.15)}s`,
+                  animationDelay: `${i * 0.1 + ci * 0.05}s`,
+                  width: i % 3 === 0 ? "8px" : "10px",
+                  height: i % 3 === 0 ? "12px" : "10px",
+                }}/>
+              ))
+            )}
+            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease", position:"relative", zIndex:1001 }}>
+              <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${ti.color}22, ${ti.color}44)`, border:`3px solid ${ti.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2.2rem" }}>
                 🎉
               </div>
               <h2 style={{ fontWeight:900, fontSize:"1.4rem", color:"#1e293b", margin:"0 0 .5rem" }}>Payment Successful!</h2>
               <p style={{ color:"#64748b", fontSize:".88rem", margin:"0 0 1.5rem", lineHeight:1.6 }}>
                 Your <strong>{thankYou.qty} {ti.label} PR Credits</strong> have been added to your wallet.
               </p>
-
-              {/* Credit summary card */}
-              <div style={{ background:`linear-gradient(135deg, ${ti.color}12, ${ti.color}06)`, border:`1px solid ${ti.color}30`, borderRadius:".75rem", padding:"1rem 1.25rem", marginBottom:"1.5rem" }}>
+              <div style={{ background:`linear-gradient(135deg, ${ti.color}12, ${ti.color}06)`, border:`1px solid ${ti.color}30`, borderRadius:".75rem", padding:"1rem 1.25rem", marginBottom:"1.5rem", textAlign:"left" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
                   <span style={{ fontSize:".78rem", color:"#64748b" }}>Credits purchased</span>
                   <span style={{ fontWeight:800, color:ti.color, fontSize:"1rem" }}>+{thankYou.qty}</span>
@@ -299,11 +318,10 @@ export default function CreditWallet({ locationId, showToast }: Props) {
                 <div style={{ height:"1px", background:"#f1f5f9", margin:".5rem 0" }}/>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <span style={{ fontSize:".78rem", color:"#64748b" }}>{ti.label} balance now</span>
-                  <span style={{ fontWeight:900, color:ti.color, fontSize:"1.1rem" }}>{newBal} credits</span>
+                  <span style={{ fontWeight:900, color:ti.color, fontSize:"1.1rem" }}>{newBal > 0 ? newBal : thankYou.qty} credits</span>
                 </div>
               </div>
-
-              <button onClick={() => setThankYou(null)} style={{ width:"100%", padding:".75rem", borderRadius:".6rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".9rem", background:`linear-gradient(135deg, ${ti.color}, ${ti.color}cc)`, color:"white", boxShadow:`0 4px 14px ${ti.color}50`, transition:"opacity .15s" }}
+              <button onClick={() => { setThankYou(null); onNavigateToPR?.(); }} style={{ width:"100%", padding:".75rem", borderRadius:".6rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".9rem", background:`linear-gradient(135deg, ${ti.color}, ${ti.color}cc)`, color:"white", boxShadow:`0 4px 14px ${ti.color}50`, transition:"opacity .15s" }}
                 onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
                 Start Using My Credits 🚀
               </button>
