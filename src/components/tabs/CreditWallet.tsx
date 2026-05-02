@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import confetti from "canvas-confetti";
+import * as confettiLib from "canvas-confetti";
 import { XIcon } from "../icons";
+
+const confetti = (confettiLib as any).default ?? confettiLib;
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
 const STRIPE_PK_TEST = "pk_test_FiKXMJBxEKrQqyMqdAILoROR";
