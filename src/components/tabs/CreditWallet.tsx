@@ -416,16 +416,16 @@ function TransactionLog({ locationId }: { locationId: string }) {
   }, [locationId]);
 
   const TIER_COLORS: Record<string,string> = { starter:"#6366f1", standard:"#8929bd", premium:"#d97706" };
-  const getIcon = (reason: string, positive: boolean) => {
+  const getIcon = (reason: string) => {
     if (reason.toLowerCase().includes("purchased") || reason.toLowerCase().includes("stripe") || reason.toLowerCase().includes("bonus")) return "⭐";
-    if (reason.toLowerCase().includes("launch") || reason.toLowerCase().includes("pr launch")) return "🚀";
+    if (reason.toLowerCase().includes("launch")) return "🚀";
     return "📝";
   };
   const cleanReason = (reason: string) => reason.replace(/^PR Launch\s*[-–—]\s*/i, "");
 
-  const cell = (content: React.ReactNode, last = false) => (
-    <div style={{ boxShadow: last ? "none" : "inset -1px 0 0 #e8edf2", paddingRight: last ? "0" : ".5rem" }}>{content}</div>
-  );
+  const thStyle: React.CSSProperties = { padding:".65rem 1rem", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", textAlign:"left", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", borderRight:"1px solid #e8edf2", whiteSpace:"nowrap" };
+  const thLast: React.CSSProperties = { ...thStyle, borderRight:"none" };
+  const tdBase  = (last=false, isLastRow=false): React.CSSProperties => ({ padding:".85rem 1rem", borderBottom: isLastRow ? "none" : "1px solid #f8fafc", borderRight: last ? "none" : "1px solid #f1f5f9", verticalAlign:"middle" });
 
   return (
     <div>
@@ -443,29 +443,54 @@ function TransactionLog({ locationId }: { locationId: string }) {
         </div>
       ) : (
         <div className="card" style={{ overflow:"hidden" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>
-            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Description</span>
-            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Tier</span>
-            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Credits</span>
-            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Date</span>
-            <span>Time</span>
-          </div>
-          {logs.map((log, i) => (
-            <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<logs.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
-              {cell(
-                <div style={{ display:"flex", alignItems:"center", gap:".65rem" }}>
-                  <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount>0 ? "#f0fdf4" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".9rem", flexShrink:0 }}>
-                    {getIcon(log.reason, log.change_amount > 0)}
-                  </span>
-                  <span style={{ fontSize:".83rem", fontWeight:600, color:"#1e293b" }}>{cleanReason(log.reason)}</span>
-                </div>
-              )}
-              {cell(<span style={{ fontSize:".73rem", fontWeight:700, textTransform:"capitalize", color:TIER_COLORS[log.tier] ?? "#64748b", background: log.tier==="starter" ? "#eef2ff" : log.tier==="standard" ? "#f5f3ff" : "#fffbeb", padding:".2rem .55rem", borderRadius:"99px" }}>{log.tier}</span>)}
-              {cell(<span style={{ fontSize:".9rem", fontWeight:800, color: log.change_amount>0 ? "#10b981" : "#ef4444" }}>{log.change_amount>0 ? `+${log.change_amount}` : log.change_amount}</span>)}
-              {cell(<span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>{new Date(log.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>)}
-              {cell(<span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>{new Date(log.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true})}</span>, true)}
-            </div>
-          ))}
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Description</th>
+                <th style={thStyle}>Tier</th>
+                <th style={thStyle}>Credits</th>
+                <th style={thStyle}>Date</th>
+                <th style={thLast}>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log, i) => {
+                const isLastRow = i === logs.length - 1;
+                return (
+                  <tr key={i}>
+                    <td style={tdBase(false, isLastRow)}>
+                      <div style={{ display:"flex", alignItems:"center", gap:".65rem" }}>
+                        <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount>0 ? "#f0fdf4" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".9rem", flexShrink:0 }}>
+                          {getIcon(log.reason)}
+                        </span>
+                        <span style={{ fontSize:".83rem", fontWeight:600, color:"#1e293b" }}>{cleanReason(log.reason)}</span>
+                      </div>
+                    </td>
+                    <td style={tdBase(false, isLastRow)}>
+                      <span style={{ fontSize:".73rem", fontWeight:700, textTransform:"capitalize", color:TIER_COLORS[log.tier] ?? "#64748b", background: log.tier==="starter" ? "#eef2ff" : log.tier==="standard" ? "#f5f3ff" : "#fffbeb", padding:".2rem .55rem", borderRadius:"99px" }}>
+                        {log.tier}
+                      </span>
+                    </td>
+                    <td style={tdBase(false, isLastRow)}>
+                      <span style={{ fontSize:".9rem", fontWeight:800, color: log.change_amount>0 ? "#10b981" : "#ef4444" }}>
+                        {log.change_amount>0 ? `+${log.change_amount}` : log.change_amount}
+                      </span>
+                    </td>
+                    <td style={tdBase(false, isLastRow)}>
+                      <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
+                        {new Date(log.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+                      </span>
+                    </td>
+                    <td style={tdBase(true, isLastRow)}>
+                      <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
+                        {new Date(log.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true})}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
