@@ -42,11 +42,11 @@ export default function PublishedPress({ orders, locationId }: Props) {
       <div className="card" style={{ overflow:"hidden" }}>
         {/* Header */}
         <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", alignItems:"center" }}>
-          <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Package</span>
-              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>PR Title</span>
-              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Date</span>
-              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Article</span>
-              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Status</span>
+          <span style={{boxShadow:"inset -1px 0 0 #e2e8f0",paddingRight:".5rem"}}>Package</span>
+              <span style={{boxShadow:"inset -1px 0 0 #e2e8f0",paddingRight:".5rem"}}>PR Title</span>
+              <span style={{boxShadow:"inset -1px 0 0 #e2e8f0",paddingRight:".5rem"}}>Date</span>
+              <span style={{boxShadow:"inset -1px 0 0 #e2e8f0",paddingRight:".5rem"}}>Article</span>
+              <span style={{boxShadow:"inset -1px 0 0 #e2e8f0",paddingRight:".5rem"}}>Status</span>
               <span>Report</span>
         </div>
 
@@ -56,7 +56,7 @@ export default function PublishedPress({ orders, locationId }: Props) {
           const dt = new Date(order.date);
           const shortTitle = order.prTitle.split(/\s+/).slice(0,5).join(" ") + (order.prTitle.split(/\s+/).length > 5 ? "…" : "");
           const cell = (content: React.ReactNode, last = false) => (
-            <div style={{ borderRight: last ? "none" : "1px solid #f1f5f9", paddingRight:"1rem" }}>{content}</div>
+            <div style={{ boxShadow: last ? "none" : "inset -1px 0 0 #e8edf2", paddingRight: last ? "0" : ".5rem" }}>{content}</div>
           );
           return (
             <div key={order.id} style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<orders.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>

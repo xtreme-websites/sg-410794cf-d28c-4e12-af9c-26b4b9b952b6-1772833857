@@ -421,10 +421,10 @@ function TransactionLog({ locationId }: { locationId: string }) {
     if (reason.toLowerCase().includes("launch") || reason.toLowerCase().includes("pr launch")) return "🚀";
     return "📝";
   };
-  const cleanReason = (reason: string) => reason.replace(/^PR Launch\s*[-–]\s*/i, "");
+  const cleanReason = (reason: string) => reason.replace(/^PR Launch\s*[-–—]\s*/i, "");
 
   const cell = (content: React.ReactNode, last = false) => (
-    <div style={{ borderRight: last ? "none" : "1px solid #f1f5f9", paddingRight:"1rem" }}>{content}</div>
+    <div style={{ boxShadow: last ? "none" : "inset -1px 0 0 #e8edf2", paddingRight: last ? "0" : ".5rem" }}>{content}</div>
   );
 
   return (
@@ -444,10 +444,10 @@ function TransactionLog({ locationId }: { locationId: string }) {
       ) : (
         <div className="card" style={{ overflow:"hidden" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>
-            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Description</span>
-            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Tier</span>
-            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Credits</span>
-            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Date</span>
+            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Description</span>
+            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Tier</span>
+            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Credits</span>
+            <span style={{ boxShadow:"inset -1px 0 0 #e2e8f0", paddingRight:".5rem" }}>Date</span>
             <span>Time</span>
           </div>
           {logs.map((log, i) => (
