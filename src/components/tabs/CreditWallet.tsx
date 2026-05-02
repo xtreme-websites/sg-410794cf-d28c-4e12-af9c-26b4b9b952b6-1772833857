@@ -7,14 +7,7 @@ declare const confetti: any;
 
 const fireConfetti = () => {
   if (typeof confetti === "undefined") return;
-  const colors = ["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9"];
-  const end = Date.now() + 2000;
-  const frame = () => {
-    confetti({ particleCount: 6, angle: 60,  spread: 55, origin: { x: 0 }, colors });
-    confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
-    if (Date.now() < end) requestAnimationFrame(frame);
-  };
-  frame();
+  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
 };
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
