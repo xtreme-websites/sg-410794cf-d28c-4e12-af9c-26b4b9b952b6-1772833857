@@ -15,7 +15,7 @@ const STATUS_CONFIG: Record<string, { label:string; color:string; bg:string }> =
 const th: React.CSSProperties = {
   padding:".65rem 1rem", fontSize:".7rem", fontWeight:700, color:"white",
   textTransform:"uppercase", letterSpacing:".06em", textAlign:"left",
-  background:"linear-gradient(135deg,#4f46e5,#7c3aed)", borderBottom:"none",
+  background:"transparent", borderBottom:"none",
   borderRight:"1px solid rgba(255,255,255,.15)", whiteSpace:"nowrap",
 };
 const thLast: React.CSSProperties = { ...th, borderRight:"none" };
@@ -53,7 +53,7 @@ export default function PublishedPress({ orders }: Props) {
       <div className="card" style={{ overflow:"hidden" }}>
         <table style={{ width:"100%", borderCollapse:"collapse" }}>
           <thead>
-            <tr>
+            <tr style={{background:"linear-gradient(135deg,#4f46e5,#7c3aed)"}}>
               <th style={th}>Package</th>
               <th style={th}>PR Title</th>
               <th style={th}>Date</th>
