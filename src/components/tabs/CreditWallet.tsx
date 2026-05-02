@@ -26,9 +26,9 @@ const PACK_PRICES: Record<Tier, Record<number,number>> = {
 };
 
 const PACKS = [
-  { qty:3,  label:"3-Pack",  badge:null,           bonus:false },
-  { qty:6,  label:"6-Pack",  badge:"Most Popular", bonus:true  },
-  { qty:12, label:"12-Pack", badge:"Best Value",   bonus:true  },
+  { qty:3,  label:"3-Pack",  discount:null,        discountColor:"" },
+  { qty:6,  label:"6-Pack",  discount:"5% Off",    discountColor:"#0ea5e9" },
+  { qty:12, label:"12-Pack", discount:"10% Off",   discountColor:"#10b981" },
 ];
 
 interface Credits { starter_credits:number; standard_credits:number; premium_credits:number; }
@@ -102,34 +102,47 @@ export default function CreditWallet({ locationId, showToast }: Props) {
       {/* PACKAGES */}
       {activeTab==="packages" && (
         <div>
+          <style>{`
+            .pack-card { transition: transform .18s, box-shadow .18s, border-color .18s; }
+            .pack-card:hover { transform: translateY(-3px); }
+            .pack-card-starter:hover  { box-shadow: 0 8px 28px rgba(99,102,241,.3) !important; border-color: #6366f1 !important; }
+            .pack-card-standard:hover { box-shadow: 0 8px 28px rgba(137,41,189,.3) !important; border-color: #8929bd !important; }
+            .pack-card-premium:hover  { box-shadow: 0 8px 28px rgba(217,119,6,.3)  !important; border-color: #d97706 !important; }
+          `}</style>
           <div style={{ marginBottom:"1.25rem" }}>
             <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#1e293b", margin:0 }}>Media Packages</h2>
             <p style={{ color:"#64748b", fontSize:".83rem", margin:".25rem 0 0" }}>Purchase PR credit packs — use anytime to launch press releases</p>
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:"1.5rem" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:"2rem" }}>
             {(Object.entries(TIERS) as [Tier, typeof TIERS[Tier]][]).map(([key, ti]) => (
-              <div key={key} className="card" style={{ padding:"1.5rem", borderLeft:`5px solid ${ti.color}` }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem", flexWrap:"wrap", gap:".5rem" }}>
+              <div key={key} className="card" style={{ overflow:"hidden" }}>
+                <div style={{ background:`linear-gradient(135deg, ${ti.color}18, ${ti.color}06)`, borderBottom:`1px solid ${ti.color}25`, padding:"1rem 1.5rem", display:"flex", alignItems:"center", gap:".75rem" }}>
+                  <div style={{ width:10, height:10, borderRadius:"50%", background:ti.color, boxShadow:`0 0 8px ${ti.color}`, flexShrink:0 }}/>
                   <div>
                     <div style={{ fontWeight:800, fontSize:"1.05rem", color:"#1e293b" }}>{ti.label} PR Package</div>
-                    <div style={{ fontSize:".77rem", color:"#64748b", marginTop:".2rem" }}>{ti.outlets} outlets · {ti.words} words · {ti.readers} readers · DA {ti.authority}</div>
+                    <div style={{ fontSize:".75rem", color:"#64748b", marginTop:".1rem" }}>{ti.outlets} outlets · {ti.words} words · {ti.readers} readers · DA {ti.authority}</div>
                   </div>
-                  <div style={{ fontSize:"1.1rem", fontWeight:800, color:ti.color }}>${ti.price}<span style={{ fontSize:".7rem", color:"#94a3b8", fontWeight:500 }}>/credit</span></div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:".75rem" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"1rem", padding:"1.25rem" }}>
                   {PACKS.map(p => (
-                    <div key={p.qty} style={{ border:`1.5px solid ${p.badge ? ti.color : "#e2e8f0"}`, borderRadius:".75rem", padding:"1rem", position:"relative", background: p.badge ? ti.light : "white" }}>
-                      {p.badge && <div style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", background:ti.color, color:"white", fontSize:".62rem", fontWeight:700, padding:".15rem .55rem", borderRadius:"99px", whiteSpace:"nowrap" }}>{p.badge}</div>}
-                      <div style={{ textAlign:"center", marginBottom:".6rem" }}>
-                        <div style={{ fontSize:"1.8rem", fontWeight:900, color:"#1e293b" }}>{p.qty}</div>
-                        <div style={{ fontSize:".7rem", color:"#64748b" }}>PR Credits</div>
-                        {p.bonus && <div style={{ fontSize:".65rem", color:"#10b981", fontWeight:700, marginTop:".1rem" }}>+1 bonus w/ promo*</div>}
+                    <div key={p.qty} className={`pack-card pack-card-${key}`} style={{ border:"1.5px solid #e2e8f0", borderRadius:".75rem", padding:"1.25rem", background:"white", position:"relative" }}>
+                      {p.discount && (
+                        <div style={{ position:"absolute", top:-1, right:-1, background:p.discountColor, color:"white", fontSize:".65rem", fontWeight:800, padding:".2rem .65rem", borderRadius:"0 .75rem 0 .5rem", letterSpacing:".04em" }}>
+                          {p.discount}
+                        </div>
+                      )}
+                      <div style={{ marginBottom:"1rem" }}>
+                        <div style={{ display:"flex", alignItems:"baseline", gap:".3rem" }}>
+                          <span style={{ fontSize:"2.8rem", fontWeight:900, color:ti.color, lineHeight:1 }}>{p.qty}</span>
+                          <span style={{ fontSize:".85rem", fontWeight:600, color:"#64748b" }}>credits</span>
+                        </div>
+                        <div style={{ fontSize:".7rem", color:"#94a3b8", marginTop:".2rem" }}>PR launches included</div>
                       </div>
-                      <div style={{ textAlign:"center", marginBottom:".75rem" }}>
-                        <div style={{ fontSize:"1.05rem", fontWeight:800, color:ti.color }}>${(PACK_PRICES[key][p.qty] * p.qty).toLocaleString()}</div>
-                        <div style={{ fontSize:".67rem", color:"#94a3b8" }}>${PACK_PRICES[key][p.qty]}/ea</div>
+                      <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:".85rem", marginBottom:".85rem" }}>
+                        <div style={{ fontSize:"1.65rem", fontWeight:900, color:"#1e293b", lineHeight:1 }}>${(PACK_PRICES[key][p.qty] * p.qty).toLocaleString()}</div>
+                        <div style={{ fontSize:".75rem", color:"#64748b", marginTop:".25rem" }}>${PACK_PRICES[key][p.qty].toLocaleString()} per credit</div>
                       </div>
-                      <button onClick={() => openCheckout(key, p.qty)} style={{ width:"100%", padding:".5rem", borderRadius:".45rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".78rem", background:ti.color, color:"white" }}
+                      <button onClick={() => openCheckout(key, p.qty)} style={{ width:"100%", padding:".6rem", borderRadius:".45rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".82rem", background:ti.color, color:"white", transition:"opacity .15s" }}
                         onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
                         Buy Now
                       </button>
@@ -139,7 +152,6 @@ export default function CreditWallet({ locationId, showToast }: Props) {
               </div>
             ))}
           </div>
-          <p style={{ fontSize:".68rem", color:"#94a3b8", marginTop:".75rem" }}>*+1 bonus credit when a promo code is applied on 6 or 12-pack purchases.</p>
         </div>
       )}
 
