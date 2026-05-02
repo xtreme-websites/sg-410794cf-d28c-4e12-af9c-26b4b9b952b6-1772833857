@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { store } from "../lib/ai";
 import { supabase, SUPABASE_URL, SUPABASE_ANON } from "../lib/supabase";
 import { CompanyData, Topic, Order, EMPTY_COMPANY, PR_PACKAGES } from "../lib/constants";
-import { ZapIcon, BuildingIcon, SettingsIcon, CheckIcon, AlertIcon, NewsIcon, BarIcon, ShieldIcon, BriefIcon, CartIcon, ArticleEditIcon, MegaphoneIcon, StarMenuIcon } from "./icons";
+import { ZapIcon, BuildingIcon, SettingsIcon, CheckIcon, AlertIcon, NewsIcon, BarIcon, ShieldIcon, BriefIcon, CartIcon, ArticleEditIcon, MegaphoneIcon, StarMenuIcon, MedalIcon } from "./icons";
 import CompanyDataModal from "./CompanyDataModal";
 import SettingsModal from "./SettingsModal";
 import CheckoutModal from "./CheckoutModal";
@@ -53,12 +53,12 @@ const GlobalStyles = () => (
 );
 
 const TABS = [
-  { id: "topics",     icon: <NewsIcon size={15}/>,   label: "Trending Topics"     },
-  { id: "competitor", icon: <BarIcon size={15}/>,    label: "Competitor Analysis" },
-  { id: "widgets",    icon: <ShieldIcon size={15}/>, label: "Trust Widgets"        },
-  { id: "pr",         icon: <BriefIcon size={15}/>,  label: "Media Content"       },
-  { id: "press",      icon: <NewsIcon size={15}/>,   label: "Published Press"     },
-  { id: "orders",     icon: <CartIcon size={15}/>,   label: "Media Credits"       },
+  { id: "topics",     icon: <NewsIcon size={15}/>,        label: "Trending Topics"     },
+  { id: "competitor", icon: <BarIcon size={15}/>,         label: "Competitor Analysis" },
+  { id: "widgets",    icon: <MedalIcon size={15}/>,       label: "Trust Widgets"       },
+  { id: "orders",     icon: <StarMenuIcon size={15}/>,    label: "Media Credits"       },
+  { id: "pr",         icon: <ArticleEditIcon size={15}/>, label: "Media Content"       },
+  { id: "press",      icon: <MegaphoneIcon size={15}/>,   label: "Published Press"     },
 ];
 
 export default function PRDashboard() {
