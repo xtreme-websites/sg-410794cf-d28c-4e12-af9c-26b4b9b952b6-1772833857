@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { callClaude } from "../../lib/ai";
 import { CompanyData, Topic, PR_PACKAGES, FOCUS_OPTIONS, THEME_OPTIONS } from "../../lib/constants";
 import { SparklesIcon, LoaderIcon, BackIcon, ClipboardIcon, CopyIcon, CheckIcon, XIcon, UploadIcon, BriefIcon } from "../icons";
@@ -178,7 +179,7 @@ ${hasPartner ? partnerQuoteBlock : "<p>[5th paragraph: call to action or closing
 ${hasPartner ? "<p>[6th paragraph: call to action or closing detail]</p>" : ""}
 <h2>About ${companyName || "Company"}</h2>
 <p>[Company boilerplate description. Include <a href="${siteUrl || "#"}" target="_blank">${siteUrl || "website"}</a> as a link.]</p>
-<h2>Contact Information</h2>
+<h2>Media Contact</h2>
 ${contactHTML}
 
 RULES:
@@ -674,13 +675,13 @@ RULES:
       )}
 
       {/* Order Confirm Modal */}
-      {orderConfirm && (() => {
+      {orderConfirm && createPortal((() => {
         const cfg = TIER_CONFIG[orderConfirm.tier];
-        // Fire confetti (same as CreditWallet - uses window.confetti from CDN)
+        // Fire confetti
         setTimeout(() => {
-          if (typeof (window as any).confetti !== "undefined") {
-            const c = (window as any).confetti;
-            const end = Date.now() + 2000;
+          const c = (window as any).confetti;
+          if (typeof c === "function") {
+            const end = Date.now() + 2500;
             const colors = [cfg.color, "#10b981", "#f59e0b", "#6366f1", "#f43f5e"];
             const frame = () => {
               c({ particleCount: 3, angle: 60,  spread: 55, startVelocity: 60, origin: { x: 0, y: 0.5 }, colors });
@@ -689,10 +690,10 @@ RULES:
             };
             frame();
           }
-        }, 100);
+        }, 50);
         return (
-          <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
-            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease", margin:"1rem" }}>
+          <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)" }}>
+            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", margin:"1rem" }}>
               <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${cfg.color}22, ${cfg.color}44)`, border:`3px solid ${cfg.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2.2rem" }}>
                 📬
               </div>
@@ -726,7 +727,7 @@ RULES:
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
     </div>
   );
 }

@@ -42,7 +42,12 @@ export default function PublishedPress({ orders, locationId }: Props) {
       <div className="card" style={{ overflow:"hidden" }}>
         {/* Header */}
         <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", alignItems:"center" }}>
-          <span>Package</span><span>PR Title</span><span>Date</span><span>Article</span><span>Status</span><span>Report</span>
+          <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Package</span>
+              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>PR Title</span>
+              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Date</span>
+              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Article</span>
+              <span style={{borderRight:"1px solid #e2e8f0",paddingRight:"1rem"}}>Status</span>
+              <span>Report</span>
         </div>
 
         {orders.map((order, i) => {
@@ -50,43 +55,19 @@ export default function PublishedPress({ orders, locationId }: Props) {
           const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
           const dt = new Date(order.date);
           const shortTitle = order.prTitle.split(/\s+/).slice(0,5).join(" ") + (order.prTitle.split(/\s+/).length > 5 ? "…" : "");
+          const cell = (content: React.ReactNode, last = false) => (
+            <div style={{ borderRight: last ? "none" : "1px solid #f1f5f9", paddingRight:"1rem" }}>{content}</div>
+          );
           return (
             <div key={order.id} style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<orders.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
-              {/* Package */}
-              <span style={{ fontSize:".72rem", fontWeight:700, color: order.productName==="Starter" ? "#6366f1" : order.productName==="Standard" ? "#8929bd" : "#d97706",
-                background: order.productName==="Starter" ? "#eef2ff" : order.productName==="Standard" ? "#f5f3ff" : "#fffbeb",
-                padding:".2rem .55rem", borderRadius:"99px", whiteSpace:"nowrap" }}>
-                {order.productName}
-              </span>
-
-              {/* PR Title */}
-              <div style={{ minWidth:0 }}>
-                <div style={{ fontWeight:600, fontSize:".83rem", color:"#1e293b" }} title={order.prTitle}>{shortTitle}</div>
-              </div>
-
-              {/* Date */}
-              <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
-                {isNaN(dt.getTime()) ? order.date : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
-              </span>
-
-              {/* Article button */}
-              <button onClick={() => setArticleModal(order)} style={{ background:"#eef2ff", color:"#6366f1", border:"none", borderRadius:".4rem", padding:".3rem .65rem", fontSize:".72rem", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-                View
-              </button>
-
-              {/* Status */}
-              <span style={{ fontSize:".72rem", fontWeight:700, color:sc.color, background:sc.bg, padding:".2rem .55rem", borderRadius:"99px", whiteSpace:"nowrap" }}>
-                {sc.label}
-              </span>
-
-              {/* Report */}
-              {status === "published" ? (
-                <button style={{ background:"#f0fdf4", color:"#16a34a", border:"1px solid #bbf7d0", borderRadius:".4rem", padding:".3rem .65rem", fontSize:".72rem", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-                  Report
-                </button>
-              ) : (
-                <span style={{ fontSize:".72rem", color:"#e2e8f0", textAlign:"center" }}>—</span>
-              )}
+              {cell(<span style={{ fontSize:".72rem", fontWeight:700, color: order.productName==="Starter" ? "#6366f1" : order.productName==="Standard" ? "#8929bd" : "#d97706", background: order.productName==="Starter" ? "#eef2ff" : order.productName==="Standard" ? "#f5f3ff" : "#fffbeb", padding:".2rem .55rem", borderRadius:"99px", whiteSpace:"nowrap" }}>{order.productName}</span>)}
+              {cell(<div style={{ fontWeight:600, fontSize:".83rem", color:"#1e293b" }} title={order.prTitle}>{shortTitle}</div>)}
+              {cell(<span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>{isNaN(dt.getTime()) ? order.date : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>)}
+              {cell(<button onClick={() => setArticleModal(order)} style={{ background:"#eef2ff", color:"#6366f1", border:"none", borderRadius:".4rem", padding:".3rem .65rem", fontSize:".72rem", fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>View</button>)}
+              {cell(<span style={{ fontSize:".72rem", fontWeight:700, color:sc.color, background:sc.bg, padding:".2rem .55rem", borderRadius:"99px", whiteSpace:"nowrap" }}>{sc.label}</span>)}
+              {cell(status === "published"
+                ? <button style={{ background:"#f0fdf4", color:"#16a34a", border:"1px solid #bbf7d0", borderRadius:".4rem", padding:".3rem .65rem", fontSize:".72rem", fontWeight:600, cursor:"pointer" }}>Report</button>
+                : <span style={{ fontSize:".72rem", color:"#94a3b8" }}>—</span>, true)}
             </div>
           );
         })}

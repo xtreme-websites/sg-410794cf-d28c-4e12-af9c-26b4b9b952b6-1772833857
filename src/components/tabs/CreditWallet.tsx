@@ -416,7 +416,16 @@ function TransactionLog({ locationId }: { locationId: string }) {
   }, [locationId]);
 
   const TIER_COLORS: Record<string,string> = { starter:"#6366f1", standard:"#8929bd", premium:"#d97706" };
-  const REASON_ICON: Record<string,string>  = { "Stripe Purchase":"💳", "PR Launch":"🚀", "Promotion Bonus":"🎁", "System Bonus":"⭐" };
+  const getIcon = (reason: string, positive: boolean) => {
+    if (reason.toLowerCase().includes("purchased") || reason.toLowerCase().includes("stripe") || reason.toLowerCase().includes("bonus")) return "⭐";
+    if (reason.toLowerCase().includes("launch") || reason.toLowerCase().includes("pr launch")) return "🚀";
+    return "📝";
+  };
+  const cleanReason = (reason: string) => reason.replace(/^PR Launch\s*[-–]\s*/i, "");
+
+  const cell = (content: React.ReactNode, last = false) => (
+    <div style={{ borderRight: last ? "none" : "1px solid #f1f5f9", paddingRight:"1rem" }}>{content}</div>
+  );
 
   return (
     <div>
@@ -435,28 +444,26 @@ function TransactionLog({ locationId }: { locationId: string }) {
       ) : (
         <div className="card" style={{ overflow:"hidden" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>
-            <span>Description</span><span>Tier</span><span>Credits</span><span>Date</span><span>Time</span>
+            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Description</span>
+            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Tier</span>
+            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Credits</span>
+            <span style={{ borderRight:"1px solid #e2e8f0", paddingRight:"1rem" }}>Date</span>
+            <span>Time</span>
           </div>
           {logs.map((log, i) => (
             <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<logs.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:".65rem" }}>
-                <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount>0 ? "#f0fdf4" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".9rem", flexShrink:0 }}>
-                  {REASON_ICON[log.reason] ?? "📝"}
-                </span>
-                <span style={{ fontSize:".83rem", fontWeight:600, color:"#1e293b" }}>{log.reason}</span>
-              </div>
-              <span style={{ fontSize:".73rem", fontWeight:700, textTransform:"capitalize", color:TIER_COLORS[log.tier] ?? "#64748b", background: log.tier==="starter" ? "#eef2ff" : log.tier==="standard" ? "#f5f3ff" : "#fffbeb", padding:".2rem .55rem", borderRadius:"99px" }}>
-                {log.tier}
-              </span>
-              <span style={{ fontSize:".9rem", fontWeight:800, color: log.change_amount>0 ? "#10b981" : "#ef4444", textAlign:"right" }}>
-                {log.change_amount>0 ? `+${log.change_amount}` : log.change_amount}
-              </span>
-              <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
-                {new Date(log.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
-              </span>
-              <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
-                {new Date(log.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true})}
-              </span>
+              {cell(
+                <div style={{ display:"flex", alignItems:"center", gap:".65rem" }}>
+                  <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount>0 ? "#f0fdf4" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".9rem", flexShrink:0 }}>
+                    {getIcon(log.reason, log.change_amount > 0)}
+                  </span>
+                  <span style={{ fontSize:".83rem", fontWeight:600, color:"#1e293b" }}>{cleanReason(log.reason)}</span>
+                </div>
+              )}
+              {cell(<span style={{ fontSize:".73rem", fontWeight:700, textTransform:"capitalize", color:TIER_COLORS[log.tier] ?? "#64748b", background: log.tier==="starter" ? "#eef2ff" : log.tier==="standard" ? "#f5f3ff" : "#fffbeb", padding:".2rem .55rem", borderRadius:"99px" }}>{log.tier}</span>)}
+              {cell(<span style={{ fontSize:".9rem", fontWeight:800, color: log.change_amount>0 ? "#10b981" : "#ef4444" }}>{log.change_amount>0 ? `+${log.change_amount}` : log.change_amount}</span>)}
+              {cell(<span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>{new Date(log.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>)}
+              {cell(<span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>{new Date(log.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true})}</span>, true)}
             </div>
           ))}
         </div>

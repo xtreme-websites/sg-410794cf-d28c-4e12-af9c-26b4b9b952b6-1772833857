@@ -88,7 +88,7 @@ export default function AuthGuard({ locationId, children }: Props) {
   if (status === "blocked") return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:"#0f0a1e", fontFamily:"system-ui,sans-serif" }}>
       <div style={{ textAlign:"center", maxWidth:360, padding:"2rem" }}>
-        <img src="/logo.png" alt="MBB" style={{ width:64, height:64, objectFit:"contain", marginBottom:"1.5rem", opacity:.8 }}/>
+        <img src="/logo.png" alt="MBB" style={{ width:64, height:64, objectFit:"contain", marginBottom:"1.5rem", opacity:.8, display:"block", margin:"0 auto 1.5rem" }}/>
         <h2 style={{ color:"white", fontWeight:700, marginBottom:".5rem", fontSize:"1.25rem" }}>Access Restricted</h2>
         <p style={{ color:"rgba(255,255,255,.4)", fontSize:".85rem", lineHeight:1.6 }}>
           This dashboard must be accessed through your platform account. Please log in to your account to continue.
