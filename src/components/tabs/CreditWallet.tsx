@@ -402,11 +402,11 @@ function TransactionLog({ locationId }: { locationId: string }) {
         </div>
       ) : (
         <div className="card" style={{ overflow:"hidden" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>
-            <span>Description</span><span>Tier</span><span>Credits</span><span>Date</span>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em" }}>
+            <span>Description</span><span>Tier</span><span>Credits</span><span>Date</span><span>Time</span>
           </div>
           {logs.map((log, i) => (
-            <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<logs.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
+            <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<logs.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
               <div style={{ display:"flex", alignItems:"center", gap:".65rem" }}>
                 <span style={{ width:32, height:32, borderRadius:"50%", background: log.change_amount>0 ? "#f0fdf4" : "#fef2f2", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".9rem", flexShrink:0 }}>
                   {REASON_ICON[log.reason] ?? "📝"}
@@ -421,6 +421,9 @@ function TransactionLog({ locationId }: { locationId: string }) {
               </span>
               <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
                 {new Date(log.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+              </span>
+              <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
+                {new Date(log.created_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true})}
               </span>
             </div>
           ))}

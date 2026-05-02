@@ -47,15 +47,42 @@ interface PRCreatorProps {
   onOpenCompanyData: () => void;
   onPlaceOrder: (packageType: string, prTitle: string, prContent: string) => void;
   onOpenCheckout: (packageType: string, prTitle: string, prContent: string) => void;
+  onOpenCredits: () => void;
+  locationId: string;
   showToast: (msg: string, type?: "success" | "error") => void;
 }
+
+const PROXY = "https://rsaoscgotumlvsbzwdiy.supabase.co/functions/v1/supabase-proxy";
+const TIER_CONFIG = {
+  Starter:  { color:"#6366f1", light:"#eef2ff", words:"350",  outlets:"200+", readers:"2.2M",   authority:69  },
+  Standard: { color:"#8929bd", light:"#f5f3ff", words:"500",  outlets:"300+", readers:"26.4M",  authority:88  },
+  Premium:  { color:"#d97706", light:"#fffbeb", words:"1000", outlets:"450+", readers:"224.5M", authority:94  },
+} as const;
+type PRTier = keyof typeof TIER_CONFIG;
 
 export default function PRCreator({
   companyData, customPRPrompt,
   selectedTopic, onClearTopic, onNavigateToTopics,
-  onOpenCompanyData, onPlaceOrder, onOpenCheckout, showToast,
+  onOpenCompanyData, onPlaceOrder, onOpenCheckout, onOpenCredits, locationId, showToast,
 }: PRCreatorProps) {
   const [prFormData,           setPrFormData]           = useState<PRFormData>({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" });
+  const [selectedTier,         setSelectedTierState]    = useState<PRTier>("Standard");
+  const [credits,              setCredits]              = useState<Record<string,number>>({ starter_credits:0, standard_credits:0, premium_credits:0 });
+
+  // Fetch credits on mount
+  useEffect(() => {
+    if (!locationId) return;
+    fetch(PROXY, { method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ table:"profiles", operation:"select", eq:{ location_id:locationId } }) })
+      .then(r => r.json()).then(d => { if (d.data) setCredits(d.data); }).catch(() => {});
+  }, [locationId]);
+
+  const setSelectedTier = (tier: PRTier) => {
+    setSelectedTierState(tier);
+    setPrFormData(p => ({ ...p, wordCount: TIER_CONFIG[tier].words }));
+  };
+
+  const tierCredits = (tier: PRTier) => credits[`${tier.toLowerCase()}_credits`] ?? 0;
   const [generatedPR,          setGeneratedPR]          = useState("");
   const [isLoading,            setIsLoading]            = useState(false);
   const [showGeneratedView,    setShowGeneratedView]    = useState(false);
@@ -179,11 +206,11 @@ RULES:
     setIsLoading(false);
   };
 
-  const handlePlaceOrder = (packageType: string) => {
-    // Extract the actual H1 headline from the generated PR
+  const handlePlaceOrder = (packageType?: string) => {
+    const pkg = packageType ?? selectedTier;
     const h1Match = generatedPR.match(/<h1[^>]*>(.*?)<\/h1>/i);
     const prTitle = h1Match ? h1Match[1].replace(/<[^>]*>/g, "") : prFormData.about.slice(0, 80) || "Press Release";
-    onOpenCheckout(packageType, prTitle, generatedPR);
+    onOpenCheckout(pkg, prTitle, generatedPR);
   };
 
   return (
@@ -243,34 +270,36 @@ RULES:
                   </button>
                 </div>
               </div>
-              <div style={{ background: "white", borderRadius: ".875rem", padding: "1.25rem", border: "2px solid #c7d2fe", minWidth: "195px" }}>
-                {prFormData.wordCount === "350" && (
-                  <>
-                    <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#6366f1", letterSpacing: ".08em", marginBottom: ".35rem" }}>STARTER</div>
-                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "#0f172a", lineHeight: 1, marginBottom: ".75rem" }}>$497</div>
-                    {["200 News Outlets", "350 Words", "2.2M Monthly Readers", "Max Authority: 69"].map(f => <div key={f} style={{ fontSize: ".78rem", color: "#475569", marginBottom: ".3rem", display: "flex", gap: ".4rem" }}><CheckIcon size={13}/>{f}</div>)}
-                    <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: ".75rem" }} onClick={() => handlePlaceOrder("Starter")}>🚀 Order & Launch</button>
-                  </>
-                )}
-                {prFormData.wordCount === "500" && (
-                  <>
-                    <div style={{ display: "flex", gap: ".4rem", alignItems: "center", marginBottom: ".35rem" }}>
-                      <span style={{ fontSize: ".72rem", fontWeight: 700, color: "#6366f1", letterSpacing: ".08em" }}>STANDARD</span>
-                      <span style={{ background: "#fef08a", color: "#713f12", fontSize: ".65rem", fontWeight: 700, padding: ".15rem .45rem", borderRadius: "99px" }}>POPULAR</span>
-                    </div>
-                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "#0f172a", lineHeight: 1, marginBottom: ".75rem" }}>$797</div>
-                    {["300 News Outlets", "500 Words", "26.4M Monthly Readers", "Max Authority: 88"].map(f => <div key={f} style={{ fontSize: ".78rem", color: "#475569", marginBottom: ".3rem", display: "flex", gap: ".4rem" }}><CheckIcon size={13}/>{f}</div>)}
-                    <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: ".75rem" }} onClick={() => handlePlaceOrder("Standard")}>🚀 Order & Launch</button>
-                  </>
-                )}
-                {prFormData.wordCount === "1000" && (
-                  <>
-                    <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#6366f1", letterSpacing: ".08em", marginBottom: ".35rem" }}>PREMIUM</div>
-                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "#0f172a", lineHeight: 1, marginBottom: ".75rem" }}>$997</div>
-                    {["450 News Outlets", "1000 Words", "224.5M Monthly Readers", "Max Authority: 94"].map(f => <div key={f} style={{ fontSize: ".78rem", color: "#475569", marginBottom: ".3rem", display: "flex", gap: ".4rem" }}><CheckIcon size={13}/>{f}</div>)}
-                    <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: ".75rem" }} onClick={() => handlePlaceOrder("Premium")}>🚀 Order & Launch</button>
-                  </>
-                )}
+              <div style={{ background: "white", borderRadius: ".875rem", padding: "1.25rem", border: `2px solid ${TIER_CONFIG[selectedTier].color}`, minWidth: "195px" }}>
+                {(() => {
+                  const cfg = TIER_CONFIG[selectedTier];
+                  const bal = tierCredits(selectedTier);
+                  const tierInfo: Record<PRTier, { outlets:string; words:string; readers:string; da:number; price:string }> = {
+                    Starter:  { outlets:"200", words:"350",  readers:"2.2M",   da:69, price:"$497" },
+                    Standard: { outlets:"300", words:"500",  readers:"26.4M",  da:88, price:"$797" },
+                    Premium:  { outlets:"450", words:"1000", readers:"224.5M", da:94, price:"$997" },
+                  };
+                  const info = tierInfo[selectedTier];
+                  return (
+                    <>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".35rem" }}>
+                        <span style={{ fontSize:".72rem", fontWeight:700, color:cfg.color, letterSpacing:".08em" }}>{selectedTier.toUpperCase()}</span>
+                        {selectedTier === "Standard" && <span style={{ background:"#fef08a", color:"#713f12", fontSize:".65rem", fontWeight:700, padding:".15rem .45rem", borderRadius:"99px" }}>POPULAR</span>}
+                      </div>
+                      <div style={{ fontSize:"2rem", fontWeight:800, color:"#0f172a", lineHeight:1, marginBottom:".75rem" }}>{info.price}</div>
+                      {[`${info.outlets} News Outlets`, `${info.words} Words`, `${info.readers} Monthly Readers`, `Max Authority: ${info.da}`].map(f => (
+                        <div key={f} style={{ fontSize:".78rem", color:"#475569", marginBottom:".3rem", display:"flex", gap:".4rem" }}><CheckIcon size={13}/>{f}</div>
+                      ))}
+                      <div style={{ marginTop:".5rem", padding:".4rem .6rem", background: bal > 0 ? "#f0fdf4" : "#fef2f2", borderRadius:".4rem", fontSize:".72rem", fontWeight:600, color: bal > 0 ? "#16a34a" : "#ef4444", textAlign:"center" }}>
+                        {bal > 0 ? `✓ ${bal} credit${bal>1?"s":""} available` : "⚠ No credits — buy to launch"}
+                      </div>
+                      {bal > 0
+                        ? <button className="btn-primary" style={{ width:"100%", justifyContent:"center", marginTop:".75rem" }} onClick={() => handlePlaceOrder()}>🚀 Order & Launch</button>
+                        : <button style={{ width:"100%", padding:".6rem", borderRadius:".5rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".82rem", background:cfg.color, color:"white", marginTop:".75rem" }} onClick={onOpenCredits}>Buy {selectedTier} Credits →</button>
+                      }
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -278,11 +307,40 @@ RULES:
       ) : (
         <div>
           <div style={{ marginBottom: "1.25rem" }}>
-            <h2 className="font-display" style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: ".2rem" }}>Press Release Creator</h2>
+            <h2 className="font-display" style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: ".2rem" }}>Media Content Creator</h2>
             <p style={{ color: "#64748b", fontSize: ".875rem" }}>Fill in the details and AI will write a professional, publish-ready press release.</p>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+
+            {/* ── PR PACKAGE SELECTOR (field #1) ── */}
+            <div>
+              <label className="field-label">PR Package <span style={{ color: "#ef4444" }}>*</span></label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: ".75rem" }}>
+                {(Object.entries(TIER_CONFIG) as [PRTier, typeof TIER_CONFIG[PRTier]][]).map(([tier, cfg]) => {
+                  const bal = tierCredits(tier);
+                  const isSelected = selectedTier === tier;
+                  const noCredits = bal === 0;
+                  return (
+                    <div key={tier} onClick={() => setSelectedTier(tier)} style={{ border: `2px solid ${isSelected ? cfg.color : "#e2e8f0"}`, borderRadius: ".75rem", padding: "1rem", cursor: "pointer", background: isSelected ? cfg.light : "white", transition: "all .15s", position: "relative", boxShadow: isSelected ? `0 4px 14px ${cfg.color}30` : "none" }}>
+                      {/* Credit badge */}
+                      <div style={{ position: "absolute", top: 8, right: 8, background: noCredits ? "#fef2f2" : "#f0fdf4", color: noCredits ? "#ef4444" : "#10b981", fontSize: ".65rem", fontWeight: 700, padding: ".15rem .45rem", borderRadius: "99px", border: `1px solid ${noCredits ? "#fecaca" : "#bbf7d0"}` }}>
+                        {noCredits ? "0 credits" : `${bal} credit${bal > 1 ? "s" : ""}`}
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: ".9rem", color: isSelected ? cfg.color : "#1e293b", marginBottom: ".25rem" }}>{tier}</div>
+                      <div style={{ fontSize: ".7rem", color: "#64748b", lineHeight: 1.4 }}>
+                        {cfg.outlets} outlets · {cfg.words} words<br/>{cfg.readers} readers · DA {cfg.authority}
+                      </div>
+                      {isSelected && noCredits && (
+                        <button onClick={e => { e.stopPropagation(); onOpenCredits(); }} style={{ marginTop: ".6rem", width: "100%", padding: ".35rem", borderRadius: ".4rem", border: "none", cursor: "pointer", fontWeight: 700, fontSize: ".7rem", background: cfg.color, color: "white" }}>
+                          Buy Credits →
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             {/* Reference section — toggle between Trending Topic and External */}
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".5rem" }}>
@@ -465,16 +523,6 @@ RULES:
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Article Length */}
-            <div>
-              <label className="field-label">Article Length</label>
-              <select value={prFormData.wordCount} onChange={e => setPrFormData(p => ({ ...p, wordCount: e.target.value }))} className="field-input">
-                <option value="350">Starter Package: Brief — 350 Words</option>
-                <option value="500">Standard Package: Standard — 500 Words</option>
-                <option value="1000">Premium Package: In-Depth — 1000 Words</option>
-              </select>
             </div>
 
             {/* Keywords */}
