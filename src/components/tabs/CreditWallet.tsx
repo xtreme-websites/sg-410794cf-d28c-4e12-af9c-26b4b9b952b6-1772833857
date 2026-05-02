@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import confetti from "canvas-confetti";
 import { XIcon } from "../icons";
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
@@ -104,7 +105,18 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
     setActiveTab("credits");
   };
 
-  const t = checkout ? TIERS[checkout.tier] : null;
+  // Fire confetti when thank you modal appears
+  useEffect(() => {
+    if (!thankYou) return;
+    const end = Date.now() + 2000;
+    const colors = ["#6366f1", "#8929bd", "#d97706", "#10b981", "#f43f5e", "#0ea5e9"];
+    const frame = () => {
+      confetti({ particleCount: 6, angle: 60,  spread: 55, origin: { x: 0 }, colors });
+      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  }, [thankYou]);
   const stripePk = testMode ? STRIPE_PK_TEST : STRIPE_PK_LIVE;
 
   return (
@@ -276,28 +288,6 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
         const newBal = (credits[`${thankYou.tier}_credits`] ?? 0);
         return (
           <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
-            <style>{`
-              @keyframes confetti-fall {
-                0%   { transform: translateY(-20px) rotate(0deg);   opacity:1; }
-                100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
-              }
-              .confetti-piece { position:fixed; width:10px; height:10px; animation: confetti-fall linear forwards; z-index:1000; }
-            `}</style>
-            {/* Confetti pieces */}
-            {["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9","#f59e0b"].map((col, ci) =>
-              [0,1,2,3,4,5,6,7].map(i => (
-                <div key={`${ci}-${i}`} className="confetti-piece" style={{
-                  left: `${5 + (ci * 14) + (i * 1.5)}%`,
-                  top: `-${10 + i * 5}px`,
-                  background: col,
-                  borderRadius: i % 2 === 0 ? "50%" : "2px",
-                  animationDuration: `${2.5 + (i * 0.3) + (ci * 0.15)}s`,
-                  animationDelay: `${i * 0.1 + ci * 0.05}s`,
-                  width: i % 3 === 0 ? "8px" : "10px",
-                  height: i % 3 === 0 ? "12px" : "10px",
-                }}/>
-              ))
-            )}
             <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease", position:"relative", zIndex:1001 }}>
               <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${ti.color}22, ${ti.color}44)`, border:`3px solid ${ti.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2.2rem" }}>
                 🎉
