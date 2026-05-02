@@ -1,10 +1,21 @@
 import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import * as confettiLib from "canvas-confetti";
 import { XIcon } from "../icons";
 
-const confetti = (confettiLib as any).default ?? confettiLib;
+const fireConfetti = () => {
+  import("canvas-confetti").then((mod) => {
+    const confetti = (mod as any).default ?? mod;
+    const colors = ["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9"];
+    const end = Date.now() + 2000;
+    const frame = () => {
+      confetti({ particleCount: 6, angle: 60,  spread: 55, origin: { x: 0 }, colors });
+      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  }).catch(() => {});
+};
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
 const STRIPE_PK_TEST = "pk_test_FiKXMJBxEKrQqyMqdAILoROR";
@@ -107,17 +118,9 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
     setActiveTab("credits");
   };
 
-  // Fire confetti when thank you modal appears
   useEffect(() => {
     if (!thankYou) return;
-    const end = Date.now() + 2000;
-    const colors = ["#6366f1", "#8929bd", "#d97706", "#10b981", "#f43f5e", "#0ea5e9"];
-    const frame = () => {
-      confetti({ particleCount: 6, angle: 60,  spread: 55, origin: { x: 0 }, colors });
-      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    };
-    frame();
+    fireConfetti();
   }, [thankYou]);
   const stripePk = testMode ? STRIPE_PK_TEST : STRIPE_PK_LIVE;
 
