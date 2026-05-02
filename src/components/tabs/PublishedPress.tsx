@@ -13,10 +13,10 @@ const STATUS_CONFIG: Record<string, { label:string; color:string; bg:string }> =
 };
 
 const th: React.CSSProperties = {
-  padding:".65rem 1rem", fontSize:".7rem", fontWeight:700, color:"#94a3b8",
+  padding:".65rem 1rem", fontSize:".7rem", fontWeight:700, color:"white",
   textTransform:"uppercase", letterSpacing:".06em", textAlign:"left",
-  background:"#f8fafc", borderBottom:"1px solid #f1f5f9",
-  borderRight:"1px solid #e8edf2", whiteSpace:"nowrap",
+  background:"linear-gradient(135deg,#4f46e5,#7c3aed)", borderBottom:"none",
+  borderRight:"1px solid rgba(255,255,255,.15)", whiteSpace:"nowrap",
 };
 const thLast: React.CSSProperties = { ...th, borderRight:"none" };
 
@@ -67,7 +67,7 @@ export default function PublishedPress({ orders }: Props) {
               const status = (order as any).status ?? "pending";
               const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
               const dt = new Date(order.date);
-              const shortTitle = order.prTitle.split(/\s+/).slice(0,5).join(" ") + (order.prTitle.split(/\s+/).length > 5 ? "…" : "");
+              const shortTitle = order.prTitle;
               const isLast = i === orders.length - 1;
               const c  = (extra: React.CSSProperties = {}) => td({ ...extra, borderBottom: isLast ? "none" : "1px solid #f8fafc" });
               const cl = (extra: React.CSSProperties = {}) => tdLast({ ...extra, borderBottom: isLast ? "none" : "1px solid #f8fafc" });
@@ -82,8 +82,8 @@ export default function PublishedPress({ orders }: Props) {
                       {order.productName}
                     </span>
                   </td>
-                  <td style={c({ maxWidth:260 })}>
-                    <span style={{ fontWeight:600, fontSize:".83rem", color:"#1e293b" }} title={order.prTitle}>{shortTitle}</span>
+                  <td style={c()}>
+                    <span style={{ fontWeight:600, fontSize:".83rem", color:"#1e293b" }}>{shortTitle}</span>
                   </td>
                   <td style={c()}>
                     <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>

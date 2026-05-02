@@ -423,7 +423,7 @@ function TransactionLog({ locationId }: { locationId: string }) {
   };
   const cleanReason = (reason: string) => reason.replace(/^PR Launch\s*[-–—]\s*/i, "");
 
-  const thStyle: React.CSSProperties = { padding:".65rem 1rem", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", textAlign:"left", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", borderRight:"1px solid #e8edf2", whiteSpace:"nowrap" };
+  const thStyle: React.CSSProperties = { padding:".65rem 1rem", fontSize:".7rem", fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", textAlign:"left", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", borderBottom:"none", borderRight:"1px solid rgba(255,255,255,.15)", color:"white", whiteSpace:"nowrap" };
   const thLast: React.CSSProperties = { ...thStyle, borderRight:"none" };
   const tdBase  = (last=false, isLastRow=false): React.CSSProperties => ({ padding:".85rem 1rem", borderBottom: isLastRow ? "none" : "1px solid #f8fafc", borderRight: last ? "none" : "1px solid #f1f5f9", verticalAlign:"middle" });
 
