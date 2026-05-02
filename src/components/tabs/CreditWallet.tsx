@@ -141,10 +141,10 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
 
   const handlePurchaseComplete = async (tier: Tier, qty: number, fromRedirect = false) => {
     sessionStorage.removeItem(PENDING_KEY);
-    // Immediately apply credits
+    const reason = `Purchased ${qty} ${TIERS[tier].label} PR Credit${qty > 1 ? "s" : ""}`;
     try {
       await fetch(PROXY, { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ table:"profiles", operation:"increment_credits", location_id:locationId, tier, amount:qty, reason:"Stripe Purchase" }) });
+        body: JSON.stringify({ table:"profiles", operation:"increment_credits", location_id:locationId, tier, amount:qty, reason }) });
     } catch {}
     await loadCredits();
     setCheckout(null); setClientSecret(null);
