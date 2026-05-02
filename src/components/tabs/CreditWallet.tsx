@@ -237,9 +237,14 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
             <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#1e293b", margin:0 }}>Media Credits</h2>
             <p style={{ color:"#64748b", fontSize:".83rem", margin:".25rem 0 0" }}>Your available PR launch credits by package tier</p>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:"1rem", marginBottom:"2rem" }}>
             {(Object.entries(TIERS) as [Tier, typeof TIERS[Tier]][]).map(([key, ti]) => {
               const bal = credits[`${key}_credits`] ?? 0;
+              const bullets: Record<Tier,string[]> = {
+                starter:  ["200 News Outlets","350 Words","2.2M Monthly Readers","Max Authority: 69"],
+                standard: ["300 News Outlets","500 Words","26.4M Monthly Readers","Max Authority: 88"],
+                premium:  ["450 News Outlets","1,000 Words","224.5M Monthly Readers","Max Authority: 94"],
+              };
               return (
                 <div key={key} className="card" style={{ padding:"1.5rem", borderTop:`4px solid ${ti.color}`, position:"relative", overflow:"hidden" }}>
                   <div style={{ position:"absolute", top:0, right:0, width:72, height:72, background:ti.light, borderRadius:"0 0 0 100%", opacity:.7 }}/>
@@ -247,8 +252,15 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
                   <div style={{ fontSize:"3rem", fontWeight:900, color:"#1e293b", lineHeight:1, marginBottom:".2rem" }}>
                     {loading ? <span style={{ fontSize:"1.5rem", color:"#94a3b8" }}>…</span> : bal}
                   </div>
-                  <div style={{ fontSize:".75rem", color:"#94a3b8", marginBottom:"1rem" }}>credits available</div>
-                  <div style={{ fontSize:".7rem", color:"#64748b", marginBottom:"1rem" }}>{ti.outlets} outlets · {ti.words}w · DA {ti.authority}</div>
+                  <div style={{ fontSize:".75rem", color:"#94a3b8", marginBottom:".85rem" }}>credits available</div>
+                  <div style={{ marginBottom:"1rem" }}>
+                    {bullets[key].map(b => (
+                      <div key={b} style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".75rem", color:"#475569", marginBottom:".3rem" }}>
+                        <span style={{ width:5, height:5, borderRadius:"50%", background:ti.color, flexShrink:0 }}/>
+                        {b}
+                      </div>
+                    ))}
+                  </div>
                   <button onClick={() => setActiveTab("packages")} style={{ width:"100%", padding:".55rem", borderRadius:".45rem", border:`1.5px solid ${ti.color}`, cursor:"pointer", fontWeight:700, fontSize:".78rem", background:"transparent", color:ti.color, transition:"all .15s" }}
                     onMouseOver={e=>{ e.currentTarget.style.background=ti.color; e.currentTarget.style.color="white"; }}
                     onMouseOut={e=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.color=ti.color; }}>
@@ -257,6 +269,26 @@ export default function CreditWallet({ locationId, showToast, onNavigateToPR }: 
                 </div>
               );
             })}
+          </div>
+
+          {/* Compelling reasons */}
+          <div style={{ marginBottom:".75rem" }}>
+            <h3 style={{ fontWeight:700, fontSize:"1rem", color:"#1e293b", margin:"0 0 .25rem" }}>Why Publish with Media Blast Boosters™?</h3>
+            <p style={{ color:"#64748b", fontSize:".82rem", margin:0 }}>Get published across hundreds of top outlets, reaching millions monthly.</p>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:".75rem" }}>
+            {[
+              { icon:"🏆", title:"Massive Social Proof",       color:"#6366f1", bg:"#eef2ff", desc:"Build instant credibility with hundreds of verified news placements your prospects can see and trust." },
+              { icon:"🎯", title:"Attract Potential Customers", color:"#8929bd", bg:"#f5f3ff", desc:"Put your message in front of millions of targeted readers actively searching for solutions you offer." },
+              { icon:"📈", title:"Top Rankings on Google",      color:"#0ea5e9", bg:"#f0f9ff", desc:"High-authority backlinks from major news sites boost your domain ranking and organic visibility." },
+              { icon:"🔗", title:"Valuable SEO Backlinks",      color:"#10b981", bg:"#f0fdf4", desc:"Each published article creates powerful do-follow links that compound your SEO results over time." },
+            ].map(r => (
+              <div key={r.title} style={{ background:r.bg, border:`1px solid ${r.color}25`, borderRadius:".75rem", padding:"1rem 1.1rem" }}>
+                <div style={{ fontSize:"1.4rem", marginBottom:".4rem" }}>{r.icon}</div>
+                <div style={{ fontWeight:700, fontSize:".85rem", color:r.color, marginBottom:".3rem" }}>{r.title}</div>
+                <div style={{ fontSize:".75rem", color:"#475569", lineHeight:1.5 }}>{r.desc}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}

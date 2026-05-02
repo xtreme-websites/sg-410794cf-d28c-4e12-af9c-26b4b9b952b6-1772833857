@@ -249,60 +249,30 @@ RULES:
             </div>
           </div>
 
-          {/* Order CTA */}
-          <div style={{ background: "linear-gradient(135deg,#f0f4ff,#faf5ff)", border: "2px solid #c7d2fe", borderRadius: "1rem", padding: "1.5rem" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", alignItems: "center" }}>
-              <div style={{ flex: 1, minWidth: "200px" }}>
-                <h3 className="font-display" style={{ fontSize: "1.25rem", fontWeight: 800, color: "#1e1b4b", marginBottom: ".5rem" }}>Ready to Launch Your PR?</h3>
-                <p style={{ color: "#4338ca", fontSize: ".875rem", marginBottom: ".75rem" }}>Get published across hundreds of top outlets, reaching millions monthly.</p>
-                {[["🏆", "Massive Social Proof"], ["🎯", "Attract Potential Customers"], ["📈", "Top Rankings on Google"], ["🔗", "Valuable SEO Backlinks"]].map(([e, t]) => (
-                  <div key={t} style={{ display: "flex", alignItems: "center", gap: ".5rem", marginBottom: ".3rem", fontSize: ".8rem", color: "#374151" }}><span>{e}</span>{t}</div>
-                ))}
-                {/* Coupon */}
-                <div style={{ marginTop: "1rem", background: "linear-gradient(135deg,#fef9c3,#fef3c7)", border: "1.5px dashed #f59e0b", borderRadius: ".6rem", padding: ".65rem .9rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontSize: ".72rem", fontWeight: 700, color: "#92400e", marginBottom: ".15rem" }}>🎉 Platform Discount</div>
-                    <div style={{ fontSize: ".8rem", color: "#78350f" }}>Congratulations! You qualify for a <strong>20% Discount</strong> for using the Platform</div>
+          {/* Simple Send for Publication CTA */}
+          {(() => {
+            const cfg = TIER_CONFIG[selectedTier];
+            const bal = tierCredits(selectedTier);
+            return (
+              <div style={{ background:`linear-gradient(135deg, ${cfg.color}18, ${cfg.color}08)`, border:`2px solid ${cfg.color}40`, borderRadius:"1rem", padding:"1.25rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"1.25rem", flexWrap:"wrap" }}>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:"1rem", color:"#1e293b", marginBottom:".2rem" }}>Ready to Publish?</div>
+                  <div style={{ fontSize:".82rem", color:"#64748b" }}>
+                    <span style={{ fontWeight:700, color:cfg.color }}>{selectedTier} Package</span> · {bal > 0 ? <span style={{ color:"#16a34a", fontWeight:600 }}>{bal} credit{bal>1?"s":""} available</span> : <span style={{ color:"#ef4444", fontWeight:600 }}>No credits available</span>}
                   </div>
-                  <button onClick={() => { navigator.clipboard.writeText("20MBAPP"); showToast("Coupon code copied!"); }} style={{ background: "#f59e0b", color: "white", border: "none", borderRadius: ".4rem", padding: ".35rem .75rem", fontSize: ".78rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: ".35rem", transition: "background .15s" }}
-                    onMouseOver={e => e.currentTarget.style.background = "#d97706"} onMouseOut={e => e.currentTarget.style.background = "#f59e0b"}>
-                    📋 20MBAPP
-                  </button>
                 </div>
+                {bal > 0
+                  ? <button onClick={() => handlePlaceOrder()} style={{ background:`linear-gradient(135deg, ${cfg.color}, ${cfg.color}cc)`, color:"white", border:"none", borderRadius:".6rem", padding:".75rem 1.5rem", fontWeight:800, fontSize:".95rem", cursor:"pointer", whiteSpace:"nowrap", boxShadow:`0 4px 14px ${cfg.color}40`, transition:"opacity .15s" }}
+                      onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                      🚀 Send for Publication
+                    </button>
+                  : <button onClick={onOpenCredits} style={{ background:"#ef4444", color:"white", border:"none", borderRadius:".6rem", padding:".75rem 1.5rem", fontWeight:800, fontSize:".95rem", cursor:"pointer", whiteSpace:"nowrap" }}>
+                      Buy {selectedTier} Credits →
+                    </button>
+                }
               </div>
-              <div style={{ background: "white", borderRadius: ".875rem", padding: "1.25rem", border: `2px solid ${TIER_CONFIG[selectedTier].color}`, minWidth: "195px" }}>
-                {(() => {
-                  const cfg = TIER_CONFIG[selectedTier];
-                  const bal = tierCredits(selectedTier);
-                  const tierInfo: Record<PRTier, { outlets:string; words:string; readers:string; da:number; price:string }> = {
-                    Starter:  { outlets:"200", words:"350",  readers:"2.2M",   da:69, price:"$497" },
-                    Standard: { outlets:"300", words:"500",  readers:"26.4M",  da:88, price:"$797" },
-                    Premium:  { outlets:"450", words:"1000", readers:"224.5M", da:94, price:"$997" },
-                  };
-                  const info = tierInfo[selectedTier];
-                  return (
-                    <>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".35rem" }}>
-                        <span style={{ fontSize:".72rem", fontWeight:700, color:cfg.color, letterSpacing:".08em" }}>{selectedTier.toUpperCase()}</span>
-                        {selectedTier === "Standard" && <span style={{ background:"#fef08a", color:"#713f12", fontSize:".65rem", fontWeight:700, padding:".15rem .45rem", borderRadius:"99px" }}>POPULAR</span>}
-                      </div>
-                      <div style={{ fontSize:"2rem", fontWeight:800, color:"#0f172a", lineHeight:1, marginBottom:".75rem" }}>{info.price}</div>
-                      {[`${info.outlets} News Outlets`, `${info.words} Words`, `${info.readers} Monthly Readers`, `Max Authority: ${info.da}`].map(f => (
-                        <div key={f} style={{ fontSize:".78rem", color:"#475569", marginBottom:".3rem", display:"flex", gap:".4rem" }}><CheckIcon size={13}/>{f}</div>
-                      ))}
-                      <div style={{ marginTop:".5rem", padding:".4rem .6rem", background: bal > 0 ? "#f0fdf4" : "#fef2f2", borderRadius:".4rem", fontSize:".72rem", fontWeight:600, color: bal > 0 ? "#16a34a" : "#ef4444", textAlign:"center" }}>
-                        {bal > 0 ? `✓ ${bal} credit${bal>1?"s":""} available` : "⚠ No credits — buy to launch"}
-                      </div>
-                      {bal > 0
-                        ? <button className="btn-primary" style={{ width:"100%", justifyContent:"center", marginTop:".75rem" }} onClick={() => handlePlaceOrder()}>🚀 Order & Launch</button>
-                        : <button style={{ width:"100%", padding:".6rem", borderRadius:".5rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".82rem", background:cfg.color, color:"white", marginTop:".75rem" }} onClick={onOpenCredits}>Buy {selectedTier} Credits →</button>
-                      }
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
       ) : (
         <div>
