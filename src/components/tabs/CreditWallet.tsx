@@ -3,19 +3,52 @@ import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { XIcon } from "../icons";
 
-declare const confetti: any;
-
 const fireConfetti = () => {
-  if (typeof confetti === "undefined") return;
-  const end = Date.now() + 3 * 1000;
-  const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1", "#8929bd", "#6366f1"];
-  const frame = () => {
-    if (Date.now() > end) return;
-    confetti({ particleCount: 2, angle: 60,  spread: 55, startVelocity: 60, origin: { x: 0, y: 0.5 }, colors });
-    confetti({ particleCount: 2, angle: 120, spread: 55, startVelocity: 60, origin: { x: 1, y: 0.5 }, colors });
-    requestAnimationFrame(frame);
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999";
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d")!;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9","#f59e0b","#a786ff"];
+  const particles = Array.from({ length: 120 }, (_, i) => ({
+    x: Math.random() < 0.5 ? 0 : canvas.width,
+    y: canvas.height * 0.5,
+    vx: (Math.random() < 0.5 ? 1 : -1) * (4 + Math.random() * 8),
+    vy: -(Math.random() * 12 + 4),
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size: Math.random() * 8 + 4,
+    gravity: 0.25,
+    decay: 0.97,
+    rotation: Math.random() * 360,
+    rotSpeed: (Math.random() - 0.5) * 8,
+    alpha: 1,
+  }));
+
+  let frame = 0;
+  const animate = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.vy += p.gravity;
+      p.vx *= p.decay;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rotation += p.rotSpeed;
+      p.alpha -= 0.008;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.fillStyle = p.color;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation * Math.PI / 180);
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.5);
+      ctx.restore();
+    });
+    frame++;
+    if (frame < 180) requestAnimationFrame(animate);
+    else canvas.remove();
   };
-  frame();
+  animate();
 };
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
