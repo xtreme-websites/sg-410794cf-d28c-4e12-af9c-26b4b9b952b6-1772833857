@@ -109,6 +109,13 @@ export default function PRCreator({
     if (!prFormData.about.trim() || !prFormData.quote.trim()) {
       showToast("Please fill in both the About and Quote fields", "error"); return;
     }
+    // Media type validation
+    if (prFormData.mediaType === "topic" && !selectedTopic) {
+      showToast("Please select a Trending Topic or change Media Type", "error"); return;
+    }
+    if (prFormData.mediaType === "article" && !externalRef.trim()) {
+      showToast("Please paste an article for the Existing Article option, or change Media Type", "error"); return;
+    }
     setIsLoading(true); setShowGeneratedView(false); setRefinementCount(0);
     try {
       const { about, quote, keywords: kw, wordCount, mainFocus, theme, videoUrl, partnerQuote, partnerAttribution, includePartnerQuote } = prFormData;
@@ -220,6 +227,14 @@ RULES:
 
   return (
     <div className="animate-fadein">
+      {/* Full-screen generating overlay */}
+      {isLoading && (
+        <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(88,28,135,0.75)", backdropFilter:"blur(3px)", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"1.25rem" }}>
+          <div style={{ width:52, height:52, border:"4px solid rgba(255,255,255,.2)", borderTopColor:"white", borderRadius:"50%", animation:"spin .8s linear infinite" }}/>
+          <div style={{ color:"white", fontWeight:700, fontSize:"1.15rem", letterSpacing:".02em" }}>Generating Press Release…</div>
+          <div style={{ color:"rgba(255,255,255,.6)", fontSize:".82rem" }}>This usually takes 15–30 seconds</div>
+        </div>
+      )}
       {showGeneratedView && generatedPR ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div className="card" style={{ padding: "1.5rem" }}>
@@ -329,20 +344,23 @@ RULES:
               )}
               <div style={{ display:"flex", flexDirection:"column", gap:"1.1rem", pointerEvents: tierCredits(selectedTier) === 0 ? "none" : "auto", opacity: tierCredits(selectedTier) === 0 ? 0.45 : 1, transition:"opacity .2s" }}>
 
-            {/* Media Type — 3 box options */}
+            {/* Media Type — horizontal slim boxes */}
             <div>
               <label className="field-label">Media Type <span style={{ color: "#ef4444" }}>*</span></label>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:".6rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:".5rem" }}>
                 {([
-                  { id:"topic",     icon:"📰", title:"Trending Topic",    desc:"Base on a trending news angle" },
-                  { id:"article",   icon:"📋", title:"Existing Article",  desc:"Reference an existing article" },
-                  { id:"authority", icon:"🏛️", title:"Authority Building", desc:"Position as industry expert"   },
+                  { id:"topic",     icon:"📰", title:"Trending Topic",    desc:"Base on news" },
+                  { id:"article",   icon:"📋", title:"Existing Article",  desc:"Reference article" },
+                  { id:"authority", icon:"🏛️", title:"Authority",          desc:"Industry expert" },
+                  { id:"freestyle", icon:"✍️", title:"Freestyle",          desc:"Open form" },
                 ] as const).map(opt => (
                   <button key={opt.id} type="button" onClick={() => setPrFormData(p => ({ ...p, mediaType: opt.id }))}
-                    style={{ border:`2px solid ${prFormData.mediaType===opt.id ? "#6366f1" : "#e2e8f0"}`, borderRadius:".65rem", padding:".75rem .6rem", background: prFormData.mediaType===opt.id ? "#eef2ff" : "white", cursor:"pointer", textAlign:"left", transition:"all .15s", boxShadow: prFormData.mediaType===opt.id ? "0 2px 8px rgba(99,102,241,.2)" : "none" }}>
-                    <div style={{ fontSize:"1.2rem", marginBottom:".3rem" }}>{opt.icon}</div>
-                    <div style={{ fontWeight:700, fontSize:".78rem", color: prFormData.mediaType===opt.id ? "#4338ca" : "#1e293b", marginBottom:".15rem" }}>{opt.title}</div>
-                    <div style={{ fontSize:".68rem", color:"#94a3b8", lineHeight:1.3 }}>{opt.desc}</div>
+                    style={{ border:`2px solid ${prFormData.mediaType===opt.id ? "#6366f1" : "#e2e8f0"}`, borderRadius:".6rem", padding:".6rem .65rem", background: prFormData.mediaType===opt.id ? "#eef2ff" : "white", cursor:"pointer", textAlign:"left", transition:"all .15s", display:"flex", alignItems:"center", gap:".5rem", boxShadow: prFormData.mediaType===opt.id ? "0 2px 8px rgba(99,102,241,.2)" : "none" }}>
+                    <span style={{ fontSize:"1rem", flexShrink:0 }}>{opt.icon}</span>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:".75rem", color: prFormData.mediaType===opt.id ? "#4338ca" : "#1e293b", lineHeight:1.2 }}>{opt.title}</div>
+                      <div style={{ fontSize:".65rem", color:"#94a3b8", lineHeight:1.2 }}>{opt.desc}</div>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -466,6 +484,12 @@ RULES:
                 {prFormData.mediaType === "authority" && (
                   <div style={{ background:"#f8fafc", border:"1px dashed #cbd5e1", borderRadius:".6rem", padding:"1rem", textAlign:"center" }}>
                     <p style={{ color:"#94a3b8", fontSize:".8rem" }}>🏛️ Authority Building options coming soon. Your PR will be crafted to position you as an industry leader.</p>
+                  </div>
+                )}
+
+                {prFormData.mediaType === "freestyle" && (
+                  <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:".6rem", padding:".75rem 1rem" }}>
+                    <p style={{ color:"#15803d", fontSize:".8rem", margin:0 }}>✍️ Freestyle mode — fill out the form below and AI will craft your press release from scratch based on your inputs.</p>
                   </div>
                 )}
               </div>
@@ -652,9 +676,23 @@ RULES:
       {/* Order Confirm Modal */}
       {orderConfirm && (() => {
         const cfg = TIER_CONFIG[orderConfirm.tier];
+        // Fire confetti (same as CreditWallet - uses window.confetti from CDN)
+        setTimeout(() => {
+          if (typeof (window as any).confetti !== "undefined") {
+            const c = (window as any).confetti;
+            const end = Date.now() + 2000;
+            const colors = [cfg.color, "#10b981", "#f59e0b", "#6366f1", "#f43f5e"];
+            const frame = () => {
+              c({ particleCount: 3, angle: 60,  spread: 55, startVelocity: 60, origin: { x: 0, y: 0.5 }, colors });
+              c({ particleCount: 3, angle: 120, spread: 55, startVelocity: 60, origin: { x: 1, y: 0.5 }, colors });
+              if (Date.now() < end) requestAnimationFrame(frame);
+            };
+            frame();
+          }
+        }, 100);
         return (
-          <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
-            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease" }}>
+          <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
+            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease", margin:"1rem" }}>
               <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${cfg.color}22, ${cfg.color}44)`, border:`3px solid ${cfg.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2.2rem" }}>
                 📬
               </div>

@@ -41,16 +41,17 @@ export default function PublishedPress({ orders, locationId }: Props) {
 
       <div className="card" style={{ overflow:"hidden" }}>
         {/* Header */}
-        <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", alignItems:"center" }}>
-          <span>Package</span><span>PR Title</span><span>Date</span><span>Time</span><span>Article</span><span>Status</span><span>Report</span>
+        <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto", gap:"1rem", padding:".65rem 1rem", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", fontSize:".7rem", fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:".06em", alignItems:"center" }}>
+          <span>Package</span><span>PR Title</span><span>Date</span><span>Article</span><span>Status</span><span>Report</span>
         </div>
 
         {orders.map((order, i) => {
           const status = (order as any).status ?? "pending";
           const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
           const dt = new Date(order.date);
+          const shortTitle = order.prTitle.split(/\s+/).slice(0,5).join(" ") + (order.prTitle.split(/\s+/).length > 5 ? "…" : "");
           return (
-            <div key={order.id} style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<orders.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
+            <div key={order.id} style={{ display:"grid", gridTemplateColumns:"auto 1fr auto auto auto auto", gap:"1rem", padding:".85rem 1rem", borderBottom: i<orders.length-1 ? "1px solid #f8fafc" : "none", alignItems:"center" }}>
               {/* Package */}
               <span style={{ fontSize:".72rem", fontWeight:700, color: order.productName==="Starter" ? "#6366f1" : order.productName==="Standard" ? "#8929bd" : "#d97706",
                 background: order.productName==="Starter" ? "#eef2ff" : order.productName==="Standard" ? "#f5f3ff" : "#fffbeb",
@@ -60,17 +61,12 @@ export default function PublishedPress({ orders, locationId }: Props) {
 
               {/* PR Title */}
               <div style={{ minWidth:0 }}>
-                <div style={{ fontWeight:600, fontSize:".83rem", color:"#1e293b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{order.prTitle}</div>
+                <div style={{ fontWeight:600, fontSize:".83rem", color:"#1e293b" }} title={order.prTitle}>{shortTitle}</div>
               </div>
 
               {/* Date */}
               <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
                 {isNaN(dt.getTime()) ? order.date : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
-              </span>
-
-              {/* Time */}
-              <span style={{ fontSize:".72rem", color:"#94a3b8", whiteSpace:"nowrap" }}>
-                {isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true})}
               </span>
 
               {/* Article button */}

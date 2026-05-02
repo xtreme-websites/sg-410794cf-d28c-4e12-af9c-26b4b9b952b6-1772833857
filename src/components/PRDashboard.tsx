@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { store } from "../lib/ai";
 import { supabase, SUPABASE_URL, SUPABASE_ANON } from "../lib/supabase";
 import { CompanyData, Topic, Order, EMPTY_COMPANY, PR_PACKAGES } from "../lib/constants";
-import { ZapIcon, BuildingIcon, SettingsIcon, CheckIcon, AlertIcon, NewsIcon, BarIcon, ShieldIcon, BriefIcon, CartIcon } from "./icons";
+import { ZapIcon, BuildingIcon, SettingsIcon, CheckIcon, AlertIcon, NewsIcon, BarIcon, ShieldIcon, BriefIcon, CartIcon, ArticleEditIcon, MegaphoneIcon, StarMenuIcon } from "./icons";
 import CompanyDataModal from "./CompanyDataModal";
 import SettingsModal from "./SettingsModal";
 import CheckoutModal from "./CheckoutModal";
