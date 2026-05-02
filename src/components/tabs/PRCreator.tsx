@@ -6,8 +6,9 @@ import { SparklesIcon, LoaderIcon, BackIcon, ClipboardIcon, CopyIcon, CheckIcon,
 // ─── Inline KeywordTagInput (dashboard-styled) ───────────────────────────────
 function KeywordTagInput({ keywords, onChange, maxKeywords = 2 }: { keywords: string[]; onChange: (kw: string[]) => void; maxKeywords?: number }) {
   const [input, setInput] = useState("");
+  const sanitize = (v: string) => v.toLowerCase().replace(/[^a-z0-9\s-]/g, "");
   const add = () => {
-    const t = input.trim();
+    const t = sanitize(input).trim();
     if (t && !keywords.includes(t) && keywords.length < maxKeywords) { onChange([...keywords, t]); setInput(""); }
   };
   return (
@@ -19,10 +20,10 @@ function KeywordTagInput({ keywords, onChange, maxKeywords = 2 }: { keywords: st
         </span>
       ))}
       {keywords.length < maxKeywords && (
-        <input value={input} onChange={e => setInput(e.target.value)}
+        <input value={input} onChange={e => setInput(sanitize(e.target.value))}
           onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder={keywords.length === 0 ? "Type + Enter" : "Add more..."}
-          style={{ flex: 1, outline: "none", fontSize: ".875rem", minWidth: "100px", background: "transparent", border: "none", padding: ".1rem 0" }}/>
+          style={{ flex: 1, outline: "none", fontSize: ".875rem", minWidth: "100px", background: "transparent", border: "none", padding: ".1rem 0", textTransform:"lowercase" }}/>
       )}
     </div>
   );
@@ -36,6 +37,7 @@ interface PRFormData {
   includePartnerQuote: "no" | "yes";
   partnerQuote: string;
   partnerAttribution: string;
+  mediaType: "topic" | "article" | "authority";
 }
 
 interface PRCreatorProps {
@@ -48,6 +50,7 @@ interface PRCreatorProps {
   onPlaceOrder: (packageType: string, prTitle: string, prContent: string) => void;
   onOpenCheckout: (packageType: string, prTitle: string, prContent: string) => void;
   onOpenCredits: () => void;
+  onNavigateToPublished?: () => void;
   locationId: string;
   showToast: (msg: string, type?: "success" | "error") => void;
 }
@@ -63,9 +66,10 @@ type PRTier = keyof typeof TIER_CONFIG;
 export default function PRCreator({
   companyData, customPRPrompt,
   selectedTopic, onClearTopic, onNavigateToTopics,
-  onOpenCompanyData, onPlaceOrder, onOpenCheckout, onOpenCredits, locationId, showToast,
+  onOpenCompanyData, onPlaceOrder, onOpenCheckout, onOpenCredits, onNavigateToPublished, locationId, showToast,
 }: PRCreatorProps) {
-  const [prFormData,           setPrFormData]           = useState<PRFormData>({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "" });
+  const [prFormData,           setPrFormData]           = useState<PRFormData>({ about: "", quote: "", keywords: [], wordCount: "500", mainFocus: "Company News", theme: "thought-provoking", videoUrl: "", mapsEmbed: "", featuredImage: null, includePartnerQuote: "no", partnerQuote: "", partnerAttribution: "", mediaType: "topic" });
+  const [orderConfirm,         setOrderConfirm]         = useState<{ tier: PRTier; title: string } | null>(null);
   const [selectedTier,         setSelectedTierState]    = useState<PRTier>("Standard");
   const [credits,              setCredits]              = useState<Record<string,number>>({ starter_credits:0, standard_credits:0, premium_credits:0 });
 
@@ -109,8 +113,8 @@ export default function PRCreator({
     try {
       const { about, quote, keywords: kw, wordCount, mainFocus, theme, videoUrl, partnerQuote, partnerAttribution, includePartnerQuote } = prFormData;
       const kwText   = kw.length > 0 ? kw.join(", ") : "no specific keywords";
-      const topicRef = selectedTopic && refMode === "topic" ? `\nBase this on trending angle: "${selectedTopic.selectedIdea || selectedTopic.title}"` : "";
-      const extRef   = externalRef.trim() && refMode === "external" ? `\nUse the following as a style/structure reference — adapt the format and tone but write entirely new content for ${companyName || "this company"}:\n---\n${externalRef.trim()}\n---` : "";
+      const topicRef = selectedTopic && prFormData.mediaType === "topic" ? `\nBase this on trending angle: "${selectedTopic.selectedIdea || selectedTopic.title}"` : "";
+      const extRef   = externalRef.trim() && prFormData.mediaType === "article" ? `\nUse the following as a style/structure reference — adapt the format and tone but write entirely new content for ${companyName || "this company"}:\n---\n${externalRef.trim()}\n---` : "";
       const coAbout  = companyData.about ? `\nCompany background: ${companyData.about}` : "";
       const contact  = [companyData.email, companyData.phone, companyData.address].filter(Boolean).join(" | ");
 
@@ -210,7 +214,8 @@ RULES:
     const pkg = packageType ?? selectedTier;
     const h1Match = generatedPR.match(/<h1[^>]*>(.*?)<\/h1>/i);
     const prTitle = h1Match ? h1Match[1].replace(/<[^>]*>/g, "") : prFormData.about.slice(0, 80) || "Press Release";
-    onOpenCheckout(pkg, prTitle, generatedPR);
+    onPlaceOrder(pkg, prTitle, generatedPR);
+    setOrderConfirm({ tier: pkg as PRTier, title: prTitle });
   };
 
   return (
@@ -264,7 +269,7 @@ RULES:
                 {bal > 0
                   ? <button onClick={() => handlePlaceOrder()} style={{ background:`linear-gradient(135deg, ${cfg.color}, ${cfg.color}cc)`, color:"white", border:"none", borderRadius:".6rem", padding:".75rem 1.5rem", fontWeight:800, fontSize:".95rem", cursor:"pointer", whiteSpace:"nowrap", boxShadow:`0 4px 14px ${cfg.color}40`, transition:"opacity .15s" }}
                       onMouseOver={e=>e.currentTarget.style.opacity=".85"} onMouseOut={e=>e.currentTarget.style.opacity="1"}>
-                      🚀 Send for Publication
+                      🚀 Order & Launch
                     </button>
                   : <button onClick={onOpenCredits} style={{ background:"#ef4444", color:"white", border:"none", borderRadius:".6rem", padding:".75rem 1.5rem", fontWeight:800, fontSize:".95rem", cursor:"pointer", whiteSpace:"nowrap" }}>
                       Buy {selectedTier} Credits →
@@ -302,9 +307,9 @@ RULES:
                         {cfg.outlets} outlets · {cfg.words} words<br/>{cfg.readers} readers · DA {cfg.authority}
                       </div>
                       {isSelected && noCredits && (
-                        <button onClick={e => { e.stopPropagation(); onOpenCredits(); }} style={{ marginTop: ".6rem", width: "100%", padding: ".35rem", borderRadius: ".4rem", border: "none", cursor: "pointer", fontWeight: 700, fontSize: ".7rem", background: cfg.color, color: "white" }}>
-                          Buy Credits →
-                        </button>
+                        <div style={{ marginTop:".5rem", fontSize:".7rem", color:cfg.color, fontWeight:600, textAlign:"center" }}>
+                          ↓ See below to add credits
+                        </div>
                       )}
                     </div>
                   );
@@ -324,44 +329,52 @@ RULES:
               )}
               <div style={{ display:"flex", flexDirection:"column", gap:"1.1rem", pointerEvents: tierCredits(selectedTier) === 0 ? "none" : "auto", opacity: tierCredits(selectedTier) === 0 ? 0.45 : 1, transition:"opacity .2s" }}>
 
-            {/* Reference section — toggle between Trending Topic and External */}
+            {/* Media Type — 3 box options */}
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".5rem" }}>
-                <label className="field-label" style={{ margin: 0 }}>PR Reference <span style={{ color: "#94a3b8", fontWeight: 400 }}>(optional)</span></label>
-                <div style={{ display: "flex", background: "#f1f5f9", borderRadius: ".4rem", padding: ".2rem", gap: ".15rem" }}>
-                  <button onClick={() => setRefMode("topic")} style={{ padding: ".25rem .65rem", fontSize: ".72rem", fontWeight: 600, border: "none", borderRadius: ".3rem", cursor: "pointer", transition: "all .15s", background: refMode === "topic" ? "white" : "transparent", color: refMode === "topic" ? "#4338ca" : "#64748b", boxShadow: refMode === "topic" ? "0 1px 3px rgba(0,0,0,.1)" : "none" }}>
-                    📰 Trending Topic
+              <label className="field-label">Media Type <span style={{ color: "#ef4444" }}>*</span></label>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:".6rem" }}>
+                {([
+                  { id:"topic",     icon:"📰", title:"Trending Topic",    desc:"Base on a trending news angle" },
+                  { id:"article",   icon:"📋", title:"Existing Article",  desc:"Reference an existing article" },
+                  { id:"authority", icon:"🏛️", title:"Authority Building", desc:"Position as industry expert"   },
+                ] as const).map(opt => (
+                  <button key={opt.id} type="button" onClick={() => setPrFormData(p => ({ ...p, mediaType: opt.id }))}
+                    style={{ border:`2px solid ${prFormData.mediaType===opt.id ? "#6366f1" : "#e2e8f0"}`, borderRadius:".65rem", padding:".75rem .6rem", background: prFormData.mediaType===opt.id ? "#eef2ff" : "white", cursor:"pointer", textAlign:"left", transition:"all .15s", boxShadow: prFormData.mediaType===opt.id ? "0 2px 8px rgba(99,102,241,.2)" : "none" }}>
+                    <div style={{ fontSize:"1.2rem", marginBottom:".3rem" }}>{opt.icon}</div>
+                    <div style={{ fontWeight:700, fontSize:".78rem", color: prFormData.mediaType===opt.id ? "#4338ca" : "#1e293b", marginBottom:".15rem" }}>{opt.title}</div>
+                    <div style={{ fontSize:".68rem", color:"#94a3b8", lineHeight:1.3 }}>{opt.desc}</div>
                   </button>
-                  <button onClick={() => setRefMode("external")} style={{ padding: ".25rem .65rem", fontSize: ".72rem", fontWeight: 600, border: "none", borderRadius: ".3rem", cursor: "pointer", transition: "all .15s", background: refMode === "external" ? "white" : "transparent", color: refMode === "external" ? "#4338ca" : "#64748b", boxShadow: refMode === "external" ? "0 1px 3px rgba(0,0,0,.1)" : "none" }}>
-                    📋 External Source
-                  </button>
-                </div>
+                ))}
               </div>
 
-              {refMode === "topic" ? (
-                selectedTopic ? (
-                  <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: ".6rem", padding: ".875rem 1rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <p style={{ fontWeight: 600, color: "#3730a3", fontSize: ".875rem", marginBottom: ".25rem" }}>{selectedTopic.title}</p>
-                        <p style={{ fontSize: ".75rem", color: "#6366f1" }}>Source: {selectedTopic.source}</p>
-                        {selectedTopic.selectedIdea && <p style={{ fontSize: ".75rem", color: "#4338ca", marginTop: ".35rem", background: "#e0e7ff", padding: ".25rem .5rem", borderRadius: ".35rem", display: "inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
+              {/* Content based on selected media type */}
+              <div style={{ marginTop:".75rem" }}>
+                {prFormData.mediaType === "topic" && (
+                  selectedTopic ? (
+                    <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: ".6rem", padding: ".875rem 1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <p style={{ fontWeight: 600, color: "#3730a3", fontSize: ".875rem", marginBottom: ".25rem" }}>{selectedTopic.title}</p>
+                          <p style={{ fontSize: ".75rem", color: "#6366f1" }}>Source: {selectedTopic.source}</p>
+                          {selectedTopic.selectedIdea && <p style={{ fontSize: ".75rem", color: "#4338ca", marginTop: ".35rem", background: "#e0e7ff", padding: ".25rem .5rem", borderRadius: ".35rem", display: "inline-block" }}>Angle: {selectedTopic.selectedIdea}</p>}
+                        </div>
+                        <button onClick={onClearTopic} style={{ fontSize: ".75rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
                       </div>
-                      <button onClick={onClearTopic} style={{ fontSize: ".75rem", color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Clear</button>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: ".6rem", padding: ".875rem", textAlign: "center" }}>
-                    <p style={{ color: "#94a3b8", fontSize: ".8rem" }}>No topic selected — <button onClick={onNavigateToTopics} style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: 600, fontSize: ".8rem" }}>browse Trending Topics →</button></p>
-                  </div>
-                )
-              ) : (
-                <div>
-                  <div
-                    ref={externalRefEl}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onInput={e => setExternalRef((e.currentTarget as HTMLDivElement).innerHTML)}
+                  ) : (
+                    <div style={{ background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: ".6rem", padding: ".875rem", textAlign: "center" }}>
+                      <p style={{ color: "#94a3b8", fontSize: ".8rem" }}>No topic selected — <button onClick={onNavigateToTopics} style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: 600, fontSize: ".8rem" }}>browse Trending Topics →</button></p>
+                    </div>
+                  )
+                )}
+
+                {prFormData.mediaType === "article" && (
+                  <div>
+                    <div
+                      ref={externalRefEl}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onInput={e => setExternalRef((e.currentTarget as HTMLDivElement).innerHTML)}
                     onPaste={e => {
                       e.preventDefault();
                       const html = e.clipboardData.getData("text/html");
@@ -448,7 +461,14 @@ RULES:
                     </div>
                   )}
                 </div>
-              )}
+                )}
+
+                {prFormData.mediaType === "authority" && (
+                  <div style={{ background:"#f8fafc", border:"1px dashed #cbd5e1", borderRadius:".6rem", padding:"1rem", textAlign:"center" }}>
+                    <p style={{ color:"#94a3b8", fontSize:".8rem" }}>🏛️ Authority Building options coming soon. Your PR will be crafted to position you as an industry leader.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Company Name + Quote Attribution (read-only) */}
@@ -628,6 +648,48 @@ RULES:
           </div>
         </div>
       )}
+
+      {/* Order Confirm Modal */}
+      {orderConfirm && (() => {
+        const cfg = TIER_CONFIG[orderConfirm.tier];
+        return (
+          <div style={{ position:"fixed", inset:0, zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,.6)", backdropFilter:"blur(6px)", animation:"fadeIn .2s ease" }}>
+            <div style={{ background:"white", borderRadius:"1.25rem", width:"100%", maxWidth:440, padding:"2.5rem", textAlign:"center", boxShadow:"0 32px 80px rgba(0,0,0,.3)", animation:"slideUp .25s ease" }}>
+              <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${cfg.color}22, ${cfg.color}44)`, border:`3px solid ${cfg.color}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1.25rem", fontSize:"2.2rem" }}>
+                📬
+              </div>
+              <h2 style={{ fontWeight:900, fontSize:"1.3rem", color:"#1e293b", margin:"0 0 .5rem" }}>PR Submitted!</h2>
+              <p style={{ color:"#64748b", fontSize:".88rem", margin:"0 0 1.25rem", lineHeight:1.6 }}>
+                Your <strong>{orderConfirm.tier} Press Release</strong> has been submitted and is pending review.
+              </p>
+              <div style={{ background:`linear-gradient(135deg, ${cfg.color}10, ${cfg.color}06)`, border:`1px solid ${cfg.color}30`, borderRadius:".75rem", padding:"1rem 1.25rem", marginBottom:"1.5rem", textAlign:"left" }}>
+                <div style={{ fontSize:".75rem", fontWeight:600, color:"#64748b", marginBottom:".5rem", textTransform:"uppercase", letterSpacing:".05em" }}>What happens next</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:".5rem" }}>
+                  {[
+                    { icon:"👤", text:"A human editor will review your content for quality and compliance" },
+                    { icon:"⏱️", text:"Review process takes 24–48 hours" },
+                    { icon:"📡", text:"Once approved, your PR will be distributed across our network" },
+                    { icon:"📊", text:"You'll receive a report with all your publication links" },
+                  ].map(s => (
+                    <div key={s.icon} style={{ display:"flex", alignItems:"flex-start", gap:".6rem", fontSize:".78rem", color:"#374151" }}>
+                      <span>{s.icon}</span><span>{s.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:".75rem" }}>
+                <button onClick={() => { setOrderConfirm(null); onNavigateToPublished?.(); }} style={{ flex:1, padding:".7rem", borderRadius:".6rem", border:"none", cursor:"pointer", fontWeight:700, fontSize:".85rem", background:`linear-gradient(135deg, ${cfg.color}, ${cfg.color}cc)`, color:"white", boxShadow:`0 4px 14px ${cfg.color}40` }}>
+                  Check Order Status
+                </button>
+                <button onClick={() => setOrderConfirm(null)} style={{ padding:".7rem 1rem", borderRadius:".6rem", border:"1px solid #e2e8f0", cursor:"pointer", fontWeight:600, fontSize:".85rem", background:"white", color:"#64748b" }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
+

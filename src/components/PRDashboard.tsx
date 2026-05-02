@@ -12,6 +12,7 @@ import TrustAssets from "./tabs/TrustAssets";
 import PRCreator from "./tabs/PRCreator";
 import AuthGuard from "./AuthGuard";
 import CreditWallet from "./tabs/CreditWallet";
+import PublishedPress from "./tabs/PublishedPress";
 
 // ─── Global Styles ─────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -56,6 +57,7 @@ const TABS = [
   { id: "competitor", icon: <BarIcon size={15}/>,    label: "Competitor Analysis" },
   { id: "widgets",    icon: <ShieldIcon size={15}/>, label: "Trust Widgets"        },
   { id: "pr",         icon: <BriefIcon size={15}/>,  label: "Media Content"       },
+  { id: "press",      icon: <NewsIcon size={15}/>,   label: "Published Press"     },
   { id: "orders",     icon: <CartIcon size={15}/>,   label: "Media Credits"       },
 ];
 
@@ -254,7 +256,8 @@ export default function PRDashboard() {
           {activeTab === "topics"     && <TrendingTopics companyData={companyData} showToast={showToast} onTopicSelect={handleTopicSelect}/>}
           {activeTab === "competitor" && <CompetitorAnalysis companyName={companyData.name} industry={companyData.industry} locationId={locationId} showToast={showToast}/>}
           {activeTab === "widgets"    && <TrustAssets orders={orders} locationId={locationId} showToast={showToast}/>}
-          {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} onOpenCheckout={(type,title,content) => setCheckoutPackage({type,title,content})} onOpenCredits={() => setActiveTab("orders")} locationId={locationId} showToast={showToast}/>}
+          {activeTab === "pr"         && <PRCreator companyData={companyData} customPRPrompt={customPRPrompt} selectedTopic={selectedTopic} onClearTopic={() => setSelectedTopic(null)} onNavigateToTopics={() => setActiveTab("topics")} onOpenCompanyData={() => setShowCompanyData(true)} onPlaceOrder={placeOrder} onOpenCheckout={(type,title,content) => setCheckoutPackage({type,title,content})} onOpenCredits={() => setActiveTab("orders")} onNavigateToPublished={() => setActiveTab("press")} locationId={locationId} showToast={showToast}/>}
+          {activeTab === "press"      && <PublishedPress orders={orders} locationId={locationId}/>}
           {activeTab === "orders"     && <CreditWallet locationId={locationId} showToast={showToast} onNavigateToPR={() => setActiveTab("pr")}/>}
         </main>
       </div>
