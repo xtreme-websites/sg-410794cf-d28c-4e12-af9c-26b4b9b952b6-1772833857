@@ -3,18 +3,18 @@ import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { XIcon } from "../icons";
 
+declare const confetti: any;
+
 const fireConfetti = () => {
-  import("canvas-confetti").then((mod) => {
-    const confetti = (mod as any).default ?? mod;
-    const colors = ["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9"];
-    const end = Date.now() + 2000;
-    const frame = () => {
-      confetti({ particleCount: 6, angle: 60,  spread: 55, origin: { x: 0 }, colors });
-      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    };
-    frame();
-  }).catch(() => {});
+  if (typeof confetti === "undefined") return;
+  const colors = ["#6366f1","#8929bd","#d97706","#10b981","#f43f5e","#0ea5e9"];
+  const end = Date.now() + 2000;
+  const frame = () => {
+    confetti({ particleCount: 6, angle: 60,  spread: 55, origin: { x: 0 }, colors });
+    confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  };
+  frame();
 };
 
 const STRIPE_PK_LIVE = "pk_live_jem1i1ni1P4sQXEJTkgNSx8z";
