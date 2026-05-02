@@ -53,12 +53,12 @@ const GlobalStyles = () => (
 );
 
 const TABS = [
-  { id: "topics",     icon: <NewsIcon size={15}/>,        label: "Trending Topics"     },
-  { id: "competitor", icon: <BarIcon size={15}/>,         label: "Competitor Analysis" },
-  { id: "widgets",    icon: <MedalIcon size={15}/>,       label: "Trust Widgets"       },
-  { id: "orders",     icon: <StarMenuIcon size={15}/>,    label: "Media Credits"       },
-  { id: "pr",         icon: <ArticleEditIcon size={15}/>, label: "Media Content"       },
-  { id: "press",      icon: <MegaphoneIcon size={15}/>,   label: "Published Press"     },
+  { id: "topics",     icon: <i className="fa-solid fa-fire-flame-curved" style={{fontSize:15}}/>, label: "Trending Topics"     },
+  { id: "competitor", icon: <i className="fa-solid fa-chart-bar" style={{fontSize:15}}/>,          label: "Competitor Analysis" },
+  { id: "widgets",    icon: <MedalIcon size={15}/>,                                                label: "Trust Widgets"       },
+  { id: "orders",     icon: <StarMenuIcon size={15}/>,                                             label: "Media Credits"       },
+  { id: "pr",         icon: <ArticleEditIcon size={15}/>,                                          label: "Media Content"       },
+  { id: "press",      icon: <MegaphoneIcon size={15}/>,                                            label: "Published Press"     },
 ];
 
 export default function PRDashboard() {
